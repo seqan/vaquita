@@ -3,6 +3,17 @@ set (SEQAN_APP_VERSION_MINOR "1")
 set (SEQAN_APP_VERSION_PATCH "0")
 set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${SEQAN_APP_VERSION_PATCH}")
 
+# Last updated date
+find_package (Git QUIET)
+if (GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} log -n 1 --simplify-by-decoration --pretty=%ai
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/.git"
+        ERROR_QUIET
+        OUTPUT_VARIABLE GIT_LAST_CHANGED_DATE
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set (SEQAN_APP_DATE "${GIT_LAST_CHANGED_DATE}")
+endif()
+
 # Dependencies
 find_package (ZLIB)
 find_package (SeqAn REQUIRED)
@@ -11,7 +22,7 @@ find_package (SeqAn REQUIRED)
 include_directories (${SEQAN_INCLUDE_DIRS})
 add_definitions (${SEQAN_DEFINITIONS})
 add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
-add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
+add_definitions (-DSEQAN_DATE="${SEQAN_APP_DATE}")
 add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
 
 # Add CXX flags found by SeqAn

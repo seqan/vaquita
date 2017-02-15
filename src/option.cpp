@@ -41,8 +41,8 @@
 void OptionManager::init()
 {
     setAppName(*this, APP_NAME_TEMP);
-    setShortDescription(*this, "for Structural Variation");
-    setCategory(*this, "for Structural Variation");
+    setShortDescription(*this, "For Structural Variation");
+    setCategory(*this, "For Structural Variation");
 
     // version & date
     setVersion(*this, SEQAN_APP_VERSION);
