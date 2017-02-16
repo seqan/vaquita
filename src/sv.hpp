@@ -76,12 +76,11 @@ class SVManager
         OptionManager* opManager;
         AlignmentManager*   alnManager;
 
-        VcfFileOut* vcfOut;
         std::map<std::string, std::vector<VcfRecordEnhanced> > sv;
 
-        void initVcf();
         bool findDeletion(void);
         bool findInversion(void);
+        bool findBreakend(void);
         bool findDuplication(void);
         bool findTranslocation(void);
         bool addTranslocation(int32_t, VcfRecordEnhanced&);
@@ -94,23 +93,20 @@ class SVManager
             this->alnManager = bpm.getAlignmentManager();
             this->opManager = bpm.getOptionManager();
         }
-        ~SVManager()
-        {
-            delete vcfOut;
-        }
 
         bool findSV(void);
-        bool writeSV(void);
+        bool writeVCF(void);
         uint32_t getDeletionCount(void) { return sv[SVTYPE_DELETION()].size(); }
         uint32_t getInversionCount(void) { return sv[SVTYPE_INVERSION()].size(); }
         uint32_t getDuplicationCount(void) { return sv[SVTYPE_DUPLICATION()].size(); }
-        uint32_t getTranslocationCount(void) { return sv[SVTYPE_TRANSLOCATION()].size() / 6; }
+        uint32_t getTranslocationCount(void) { return sv[SVTYPE_TRANSLOCATION()].size(); }
+        uint32_t getBreakendCount(void) { return sv[SVTYPE_BREAKEND()].size() / 2; } // always pairs.
 
         static std::string SVTYPE_DELETION(void) { return "DEL"; }
         static std::string SVTYPE_INVERSION(void) { return "INV"; }
         static std::string SVTYPE_DUPLICATION(void) { return "DUP"; }
-        //static std::string SVTYPE_TRANSLOCATION(void) { return "TRA"; }
-        static std::string SVTYPE_TRANSLOCATION(void) { return "BND"; }
+        static std::string SVTYPE_TRANSLOCATION(void) { return "TRA"; }
+        static std::string SVTYPE_BREAKEND(void) { return "BND"; }
 };
 
 #endif // APP_SV_H_

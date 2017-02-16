@@ -33,5 +33,5 @@
 // ==========================================================================
 #ifndef APP_VAQUITA_H_
 #define APP_VAQUITA_H_
-#define APP_NAME_TEMP "Vaquita"
+#define APP_NAME "Vaquita"
 #endif // APP_VAQUITA_H_

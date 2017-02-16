@@ -72,9 +72,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
     this->updateBreakpoint( FIRST_ELEMENT(localAligns).indelList, true );
 
     // for each alignment
-    //unsigned maxOverlapSize = this->getOptionManager()->getAdjTol();
-    unsigned maxOverlapSize = 20;
-    //unsigned maxOverlapSize = 9999;
+    unsigned maxOverlapSize = 20; // TODOs : provide option
     for(unsigned int i=1; i < localAligns.size(); ++i)
     {
         // check indels
@@ -122,69 +120,95 @@ bool SplitRead::analyzeRead(TReadName& readName)
             BreakpointEvidence be;
             be.suppRead = 1;
 
-            if (rSeg1.isReverse == rSeg2.isReverse) // same strand
+            // decided by positions in reference
+            if (rSeg1.templateID == rSeg2.templateID)
             {
-                if (rSeg1.beginPos < rSeg2.beginPos)
+                if (rSeg1.isReverse == rSeg2.isReverse) // same strand
                 {
-                    leftRefSeg = &rSeg1;
-                    rightRefSeg = &rSeg2;
-                    be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED; // - ->
-                    be.leftSegment.beginPos = leftRefSeg->endPos;
-                    be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
-                }
-                else
-                {
-                    leftRefSeg = &rSeg2;
-                    rightRefSeg = &rSeg1;
-                    be.orientation = BreakpointEvidence::ORIENTATION::SWAPPED; // -> -
-                    be.leftSegment.beginPos = leftRefSeg->beginPos;   
-                    be.rightSegment.beginPos = rightRefSeg->endPos - 1;
-                }
-            }
-            else
-            {
-                be.orientation = BreakpointEvidence::ORIENTATION::INVERSED;
-
-                if (rSeg1.beginPos < rSeg2.beginPos)
-                {
-                    leftRefSeg = &rSeg1;
-                    rightRefSeg = &rSeg2;
-
-                    if (leftRefSeg->isReverse == false) // - |    <-|
+                    if (rSeg1.beginPos < rSeg2.beginPos)
                     {
+                        leftRefSeg = &rSeg1;
+                        rightRefSeg = &rSeg2;
+                        be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED; // - ->
                         be.leftSegment.beginPos = leftRefSeg->endPos;
-                        be.rightSegment.beginPos = rightRefSeg->endPos - 1;
-                    }
-                    else // |-    |->
-                    {
-                        be.leftSegment.beginPos = leftRefSeg->beginPos;
                         be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                    }
+                    else
+                    {
+                        leftRefSeg = &rSeg2;
+                        rightRefSeg = &rSeg1;
+                        be.orientation = BreakpointEvidence::ORIENTATION::SWAPPED; // -> -
+                        be.leftSegment.beginPos = leftRefSeg->beginPos;   
+                        be.rightSegment.beginPos = rightRefSeg->endPos - 1;
                     }
                 }
                 else
                 {
-                    leftRefSeg = &rSeg2;
-                    rightRefSeg = &rSeg1;
+                    be.orientation = BreakpointEvidence::ORIENTATION::INVERSED;
 
-                    if (leftRefSeg->isReverse == false) // |->    |-
+                    if (rSeg1.beginPos < rSeg2.beginPos)
                     {
-                        be.leftSegment.beginPos = leftRefSeg->beginPos;
-                        be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                        leftRefSeg = &rSeg1;
+                        rightRefSeg = &rSeg2;
+
+                        if (leftRefSeg->isReverse == false) // - |    <-|
+                        {
+                            be.leftSegment.beginPos = leftRefSeg->endPos;
+                            be.rightSegment.beginPos = rightRefSeg->endPos - 1;
+                        }
+                        else // |-    |->
+                        {
+                            be.leftSegment.beginPos = leftRefSeg->beginPos;
+                            be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                        }
                     }
-                    else // <-|   -|
+                    else
                     {
-                        be.leftSegment.beginPos = leftRefSeg->endPos;
-                        be.rightSegment.beginPos = rightRefSeg->endPos - 1;
+                        leftRefSeg = &rSeg2;
+                        rightRefSeg = &rSeg1;
+
+                        if (leftRefSeg->isReverse == false) // |->    |-
+                        {
+                            be.leftSegment.beginPos = leftRefSeg->beginPos;
+                            be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                        }
+                        else // <-|   -|
+                        {
+                            be.leftSegment.beginPos = leftRefSeg->endPos;
+                            be.rightSegment.beginPos = rightRefSeg->endPos - 1;
+                        }
                     }
                 }
+             
+                be.leftSegment.templateID = leftRefSeg->templateID;
+                be.leftSegment.isReverse = leftRefSeg->isReverse;
+                be.leftSegment.endPos = be.leftSegment.beginPos + 1;
+                be.rightSegment.templateID = rightRefSeg->templateID;
+                be.rightSegment.isReverse = rightRefSeg->isReverse;
+                be.rightSegment.endPos = be.rightSegment.beginPos + 1;
             }
+            else // decided by positions in query
+            {
+                SequenceSegment* leftQuerySeg; 
+                SequenceSegment* rightQuerySeg;
 
-            be.leftSegment.templateID = leftRefSeg->templateID;
-            be.leftSegment.isReverse = leftRefSeg->isReverse;
-            be.leftSegment.endPos = be.leftSegment.beginPos + 1;
-            be.rightSegment.templateID = rightRefSeg->templateID;
-            be.rightSegment.isReverse = rightRefSeg->isReverse;
-            be.rightSegment.endPos = be.rightSegment.beginPos + 1;
+                leftQuerySeg = &qSeg1;
+                leftRefSeg = &rSeg1;
+                rightQuerySeg = &qSeg2;
+                rightRefSeg = &rSeg2;
+
+                be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
+
+                be.leftSegment.templateID = leftRefSeg->templateID;
+                be.leftSegment.isReverse = leftRefSeg->isReverse;
+                be.leftSegment.beginPos = leftRefSeg->endPos;
+                be.leftSegment.endPos = be.leftSegment.beginPos + 1;
+
+                be.rightSegment.templateID = rightRefSeg->templateID;
+                be.rightSegment.isReverse = rightRefSeg->isReverse;               
+                be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                be.rightSegment.endPos = be.rightSegment.beginPos + 1;
+            }
 
             Breakpoint *newBp = this->updateBreakpoint(be, isNew);
             newBp->bFoundExactPosition = true;                

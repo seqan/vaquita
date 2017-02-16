@@ -337,7 +337,10 @@ bool AlignmentManager::load(void)
             ++this->totalRecordNum;
 
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
+            {
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
+                break;
+            }
             
             // discards low quality reads, secondary mappings
             //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))

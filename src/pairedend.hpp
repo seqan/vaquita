@@ -55,7 +55,6 @@ class PairedEndRead : public BreakpointCandidate
         bool analyze(void);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);
 		
-        Breakpoint* updateWithCandidateRegion(BreakpointEvidence&, bool);
         bool isBreakpointUsed(Breakpoint* bp) { return this->breakpointIsUsedInfo[bp]; }
         void setBreakpointUsed(Breakpoint* bp, bool b) { this->breakpointIsUsedInfo[bp] = b; }
 };

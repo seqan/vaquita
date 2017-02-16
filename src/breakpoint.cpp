@@ -448,7 +448,9 @@ bool BreakpointManager::findFinalBreakpoints(void)
 
         FinalBreakpointInfo finalBreakpoint;
         finalBreakpoint.leftTemplateID = bp->leftTemplateID;
+        finalBreakpoint.isLeftReverse = bp->leftReverseFlag;
         finalBreakpoint.rightTemplateID = bp->rightTemplateID;
+        finalBreakpoint.isRightReverse = bp->rightReverseFlag;
 
         // calculate positions
         uint32_t splitReadCnt = (info->splitReadSupport + info->clippedReadSupport);
@@ -488,54 +490,6 @@ bool BreakpointManager::addImpreciseBreakpoints(void)
             sort(newBp->rightPos.begin(), newBp->rightPos.end());
             leftPos = MID_ELEMENT(newBp->leftPos);
             rightPos = MID_ELEMENT(newBp->rightPos);
-
-            /*
-            if (newBp->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED)
-            {
-                // shrink to inside
-                leftPos = newBp->minLeftPos;
-                rightPos = newBp->maxRightPos;
-
-                // expand to outside : rightPos(-), leftPos(+)
-                BreakpointCandidate::setPositionWithAdj(rightPos, leftPos, minSVSize);
-            }
-            else if (newBp->orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
-            {
-                // shrink to inside
-                leftPos = newBp->maxLeftPos;
-                rightPos = newBp->minRightPos;
-
-                // expand to outside : leftPos(-), rightPos(+)
-                BreakpointCandidate::setPositionWithAdj(leftPos, rightPos, minSVSize);
-            }
-            else if (newBp->orientation == BreakpointEvidence::ORIENTATION::INVERSED)
-            {
-                if (newBp->leftReverseFlag) // <-- <--
-                {
-                    // shrink to right side & expand to left side
-                    leftPos = newBp->maxLeftPos;
-                    tempPos = leftPos;
-                    BreakpointCandidate::setPositionWithAdj(leftPos, tempPos, minSVSize);
-
-                    rightPos = newBp->maxRightPos;
-                    tempPos = rightPos;
-                    BreakpointCandidate::setPositionWithAdj(rightPos, tempPos, minSVSize);
-                }
-                else // -> ->
-                {
-                    // shrink to left side & expand to right side
-                    leftPos = newBp->minLeftPos;
-                    tempPos = leftPos;
-                    BreakpointCandidate::setPositionWithAdj(tempPos, leftPos, minSVSize);
-
-                    rightPos = newBp->minRightPos;
-                    tempPos = rightPos;
-                    BreakpointCandidate::setPositionWithAdj(tempPos, rightPos, minSVSize);
-                }
-            }
-            else
-                continue;
-            */
 
             // left position
             newBp->leftPos.clear();
@@ -672,6 +626,14 @@ bool BreakpointManager::filterByVote(void)
                 {
                     voteCount += 1;
                 }
+            }
+            else // BreakpointEvidence::NOT_DECIDED (potentially inter-chromosomal events)
+            {
+                if (info->leftReadDepthDiffScore >= (info->leftReadDepth * this->optionManager->getDDSHigh()) || \
+                    info->rightReadDepthDiffScore >= (info->rightReadDepth * this->optionManager->getDDSHigh()) )
+                {
+                    voteCount += 1;
+                } 
             }
         }
         

@@ -87,9 +87,10 @@ int main(int argc, char const ** argv)
     printTimeMessage(std::to_string(svMgr.getInversionCount()) + " inversions.");
     printTimeMessage(std::to_string(svMgr.getDuplicationCount()) + " duplications.");
     printTimeMessage(std::to_string(svMgr.getTranslocationCount()) + " translocations.");
+    printTimeMessage(std::to_string(svMgr.getBreakendCount()) + " breakends.");
 
     // Result
-    RUN(result, "WRITE RESULT", svMgr.writeSV());
+    RUN(result, "WRITE RESULT", svMgr.writeVCF());
 
     time(&endTime);
     printMessage("Total elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");

@@ -30,20 +30,10 @@
 //
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
-// ==========================================================================
+// ===========================================/===============================
+#include "vaquita.hpp"
 #include "sv.hpp"
-
-void SVManager::initVcf(void)
-{
-    this->vcfOut = new VcfFileOut(std::cout, Vcf());
-
-    // reference
-    for (int i=0; i < this->alnManager->getRefCount(); ++i)
-        appendValue(contigNames(context(*this->vcfOut)), this->alnManager->getRefName(i));
-
-    // sample
-    appendValue(sampleNames(context(*this->vcfOut)), "SAMPLE");
-}
+#include "misc.hpp"
 
 bool SVManager::findSV(void)
 {
@@ -51,10 +41,11 @@ bool SVManager::findSV(void)
     findInversion();
     findDuplication(); // required : deletion
     findTranslocation(); // required : duplication
+    findBreakend(); // the others
     return true;
 }
 
-bool SVManager::writeSV(void)
+bool SVManager::writeVCF(void)
 {
     // merge to a single list
     std::vector<VcfRecordEnhanced> vcfRecords;
@@ -68,22 +59,51 @@ bool SVManager::writeSV(void)
             if (itSVType->first == SVTYPE_DELETION() && itSV->isPseudoDeletion == true)
                 continue;
 
+            /* for 6 lines of representation of translocations
             if (itSVType->first != SVTYPE_TRANSLOCATION())
                 itSV->id = itSVType->first + "_" + std::to_string(nID++);
+            */
 
             vcfRecords.push_back(*itSV);
         }
     }
-
     // sort by chromosome & position
     std::sort(vcfRecords.begin(), vcfRecords.end(), less_than_vcf());
 
-    // init
-    initVcf();
+
+    // init.
+    VcfHeader vcfHeader;
+    VcfFileOut vcfOut;
+    open(vcfOut, std::cout, Vcf());
+
+    // headers
+    appendValue(vcfHeader, VcfHeaderRecord("fileformat", "VCFv4.1"));
+    appendValue(vcfHeader, VcfHeaderRecord("source", APP_NAME));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RT,Number=1,Type=Float,Description=\"Number of split-read and read-pairs supporting the structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Number of read-pairs supporting the structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RD,Number=1,Type=Float,Description=\"Read-depth around structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP:TANDEM,Description=\"Tandem duplication\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=TRA,Description=\"Translocation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=BND,Description=\"Breakend\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("FORMAT", "<ID=GT,Number=1,Type=String,Description=\"Genotype\">"));
+
+    // reference & sample
+    for (int i=0; i < this->alnManager->getRefCount(); ++i)
+        appendValue(contigNames(context(vcfOut)), this->alnManager->getRefName(i));
+    appendValue(sampleNames(context(vcfOut)), "SAMPLE");
 
     // write
+    writeHeader(vcfOut, vcfHeader);
     for (auto itSV = vcfRecords.begin(); itSV != vcfRecords.end(); ++itSV)
-        writeRecord(*this->vcfOut, *itSV);
+        writeRecord(vcfOut, *itSV);
 
     return true;
 }
@@ -103,15 +123,25 @@ bool SVManager::addTranslocation(int32_t nID, VcfRecordEnhanced& orgRecord)
     record.info += "CE=" + std::to_string(orgRecord.ce) + ";";
     record.info += "RE=" + std::to_string(orgRecord.re) + ";";
     record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-    record.info += "SVTYPE=" + SVTYPE_TRANSLOCATION();
+    record.info += "SVTYPE=" + SVTYPE_TRANSLOCATION() + ";";
+    record.info += "SVLEN=" + std::to_string(svLen);
             
-    // TODOs
+    // TODOs (is this the best way to represent translocations?)
     record.ref = "N"; // before SV
     record.qual = VcfRecord::MISSING_QUAL();
     record.filter = "PASS";       
-    record.format = "GT:GQ:";
-    appendValue(record.genotypeInfos, "1/1");
+    record.format = "GT";
+    appendValue(record.genotypeInfos, "./.");
 
+    record.id = recordID;
+    record.beginPos = orgRecord.beginPos;
+    record.endPos = orgRecord.endPos;
+    record.targetPos = orgRecord.targetPos;
+    record.info += ";TARGETPOS=" + std::to_string(record.targetPos);
+
+    sv[SVTYPE_TRANSLOCATION()].push_back(record);
+
+    /* 6 lines of representation. Legacy of Trappe 2015
     record.id = recordID + "_1";
     record.beginPos = orgRecord.beginPos - 1;
     sv[SVTYPE_TRANSLOCATION()].push_back(record);
@@ -132,6 +162,7 @@ bool SVManager::addTranslocation(int32_t nID, VcfRecordEnhanced& orgRecord)
     record.id = recordID + "_6";
     record.beginPos = orgRecord.targetPos;
     sv[SVTYPE_TRANSLOCATION()].push_back(record);
+    */
 }
 
 bool SVManager::findTranslocation(void)
@@ -312,7 +343,8 @@ bool SVManager::findDuplication(void)
                 record.info += "RE=" + std::to_string(record.re) + ";";
                 record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
                 record.info += "SVTYPE=" + SVTYPE_DUPLICATION() + ";";
-                record.info += "SVLEN=" + std::to_string(svLen) + ";";
+                record.info += "SVLEN=" + std::to_string(svLen);
+
                 if (record.additionalInfo == 'I')
                 {
                     record.alt = "<" + SVTYPE_DUPLICATION() + ":TANDEM>";
@@ -320,15 +352,15 @@ bool SVManager::findDuplication(void)
                 else
                 {
                     record.alt = "<" + SVTYPE_DUPLICATION() + ">";
-                    record.info += "TARGETPOS=" + std::to_string(record.targetPos) + ";";                    
+                    record.info += ";TARGETPOS=" + std::to_string(record.targetPos);
                 }
 
                 // TODOs
                 record.ref = "N"; // before SV
                 record.qual = VcfRecord::MISSING_QUAL();
                 record.filter = "PASS";       
-                record.format = "GT:GQ:";
-                appendValue(record.genotypeInfos, "1/1");
+                record.format = "GT";
+                appendValue(record.genotypeInfos, "./.");
 
                 sv[SVTYPE_DUPLICATION()].push_back(record);
             }
@@ -413,8 +445,8 @@ bool SVManager::findInversion(void)
             record.ref = "N"; // before SV
             record.qual = VcfRecord::MISSING_QUAL();
             record.filter = "PASS";       
-            record.format = "GT:GQ:";
-            appendValue(record.genotypeInfos, "1/1");
+            record.format = "GT";
+            appendValue(record.genotypeInfos, "./.");
 
             sv[SVTYPE_INVERSION()].push_back(record);
             itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
@@ -487,8 +519,8 @@ bool SVManager::findDeletion(void)
             record.ref = "N"; // before SV
             record.qual = VcfRecord::MISSING_QUAL();
             record.filter = "PASS";       
-            record.format = "GT:GQ:";
-            appendValue(record.genotypeInfos, "1/1");
+            record.format = "GT";
+            appendValue(record.genotypeInfos, "./.");
 
             sv[SVTYPE_DELETION()].push_back(record);
             itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
@@ -536,4 +568,91 @@ bool SVManager::findDeletion(void)
     
 
     return true;
+}
+
+
+bool SVManager::findBreakend(void)
+{
+    MergedCandidate* mergedBreakpoint = this->bpManager->getMergedBreakpoint();
+    TBreakpointSet* candidateSet = mergedBreakpoint->getCandidateSet();
+    auto itBreakpoint = candidateSet->begin();
+    int32_t nID = 1;
+
+    while (itBreakpoint != candidateSet->end())
+    {
+        Breakpoint* bp = *itBreakpoint;
+        ReadSupportInfo* info =  mergedBreakpoint->getReadSupport(bp);
+        FinalBreakpointInfo* finalBreakpoint = this->bpManager->getFinalBreakpointInfo(bp);
+
+        if (bp->orientation != BreakpointEvidence::ORIENTATION::NOT_DECIDED)
+        {
+            ++itBreakpoint;
+            continue;
+        }
+
+        VcfRecordEnhanced record;
+        record.breakpoint = bp;
+        record.se = info->splitReadSupport;
+        record.pe = info->pairedEndSupport;
+        record.ce = info->clippedReadSupport;
+        if (info->leftReadDepthSelected == true)
+            record.re = info->leftReadDepthDiffScore;
+        else
+            record.re = info->rightReadDepthDiffScore;
+
+        record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
+        record.info += "SE=" + std::to_string(record.se) + ";";
+        record.info += "PE=" + std::to_string(record.pe) + ";";
+        record.info += "CE=" + std::to_string(record.ce) + ";";
+        record.info += "RE=" + std::to_string(record.re) + ";";
+        record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
+        record.info += "SVTYPE=" + SVTYPE_BREAKEND() + ";";
+
+        record.qual = VcfRecord::MISSING_QUAL();
+        record.filter = "PASS";     
+        record.format = "GT";
+        appendValue(record.genotypeInfos, "./.");
+
+        record.ref = "N"; // TODO : get the real nt.
+        std::string ntAtSV;
+        if (finalBreakpoint->isLeftReverse == finalBreakpoint->isRightReverse)
+        {
+            ntAtSV = "N"; // TODO : get the real nt.
+            record.rID = finalBreakpoint->leftTemplateID;
+            record.beginPos = finalBreakpoint->leftPosition;
+            record.id = SVTYPE_BREAKEND() + "_" + std::to_string(nID) + "_" + "1";
+            record.alt = ntAtSV + "[" + CharStringToStdString(this->alnManager->getRefName(finalBreakpoint->rightTemplateID));
+            record.alt += ":" + std::to_string(finalBreakpoint->rightPosition + 1) + "[";
+            sv[SVTYPE_BREAKEND()].push_back(record);
+
+            ntAtSV = "N";
+            record.rID = finalBreakpoint->rightTemplateID;
+            record.beginPos = finalBreakpoint->rightPosition;
+            record.id = SVTYPE_BREAKEND() + "_" + std::to_string(nID) + "_" + "2";
+            record.alt = "]" + CharStringToStdString(this->alnManager->getRefName(finalBreakpoint->leftTemplateID));
+            record.alt += ":" + std::to_string(finalBreakpoint->leftPosition + 1) + "]" + ntAtSV;
+            sv[SVTYPE_BREAKEND()].push_back(record);
+        }
+        else
+        {
+            ntAtSV = "N"; // TODO : get the real nt.
+            record.rID = finalBreakpoint->leftTemplateID;
+            record.beginPos = finalBreakpoint->leftPosition;
+            record.id = SVTYPE_BREAKEND() + "_" + std::to_string(nID) + "_" + "1";
+            record.alt = ntAtSV + "]" + CharStringToStdString(this->alnManager->getRefName(finalBreakpoint->rightTemplateID));
+            record.alt += ":" + std::to_string(finalBreakpoint->rightPosition + 1) + "]";
+            sv[SVTYPE_BREAKEND()].push_back(record);
+
+            ntAtSV = "N"; // TODO : get the real nt.
+            record.rID = finalBreakpoint->rightTemplateID;
+            record.beginPos = finalBreakpoint->rightPosition;
+            record.id = SVTYPE_BREAKEND() + "_" + std::to_string(nID) + "_" + "2";
+            record.alt = "[" + CharStringToStdString(this->alnManager->getRefName(finalBreakpoint->leftTemplateID));
+            record.alt += ":" + std::to_string(finalBreakpoint->leftPosition + 1) + "[" + ntAtSV;
+            sv[SVTYPE_BREAKEND()].push_back(record);
+        }
+
+        ++nID;
+        itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
+    }
 }

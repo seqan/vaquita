@@ -41,7 +41,7 @@
 
 void OptionManager::init()
 {
-    setAppName(*this, APP_NAME_TEMP);
+    setAppName(*this, APP_NAME);
     setShortDescription(*this, "For Structural Variation");
     setCategory(*this, "For Structural Variation");
 
@@ -74,10 +74,16 @@ void OptionManager::init()
     setDefaultValue(*this, "minVote", "2");
     addOption(*this, ArgParseOption("vb", "voteBound", "Parameter for categorization of SVs by depth.", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "voteBound", "0.9");
+    
+    /* this option is for debugging
     addOption(*this, ArgParseOption("", "write-breakpoint", "Write breakpoint informtation in a tab-separated format (breakpoints.tsv)."));
     setDefaultValue(*this, "write-breakpoint", "false");
+    */
+
+    /* not fully supported yet
     addOption(*this, ArgParseOption("", "use-global-th", "Use global threshold. (temporary)"));
     setDefaultValue(*this, "use-global-th", "false");
+    */
 
     addSection(*this, "Split-read evidence");
     addOption(*this, ArgParseOption("sr", "minSplitReadSupport", "Minimum number of supporting reads.", ArgParseOption::DOUBLE, "FLOAT"));
@@ -118,9 +124,11 @@ void OptionManager::init()
     setDefaultValue(*this, "no-re", "false");
 
     // output options
+    /* not supported yet
     addSection(*this, "Output");
     addOption(*this, ArgParseOption("o", "output-file", "Specify an output file. Default: write the file to standard output.", ArgParseOption::OUTPUT_FILE));
     setValidValues(*this, "output-file", ".vcf");
+    */
 }
 
 bool OptionManager::parseCommandLine(int argc, char const ** argv)
@@ -153,8 +161,8 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
     getOptionValue(this->ddsLow, *this, "ddsLow");
     getOptionValue(this->readDepthWindowSize, *this, "readDepthWindowSize");
 
-    this->writeBreakpoint = isSet(*this, "write-breakpoint");
-    this->useGlobalTh = isSet(*this, "use-global-th");
+    //this->writeBreakpoint = isSet(*this, "write-breakpoint");
+    //this->useGlobalTh = isSet(*this, "use-global-th");
     this->doPairedEndRead = !isSet(*this, "no-pe");
     this->doClippedRead = !isSet(*this, "no-ce");
     this->doReadDepth = !isSet(*this, "no-re");
@@ -172,12 +180,12 @@ void OptionManager::printUserInput(void)
     printMessage("- adjTol: " + std::to_string(this->adjTol));
     printMessage("- minVote: " + std::to_string(this->minVote));
     printMessage("- voteBound: " + std::to_string(this->voteBound));
-    printMessage("- no-pe: " + std::to_string(this->doPairedEndRead));
-    printMessage("- no-ce: " + std::to_string(this->doClippedRead));
-    printMessage("- no-re: " + std::to_string(this->doReadDepth));
+    printMessage("- no-pe: " + std::to_string(!this->doPairedEndRead));
+    printMessage("- no-ce: " + std::to_string(!this->doClippedRead));
+    printMessage("- no-re: " + std::to_string(!this->doReadDepth));
     printMessage("[Split-read option]");
     printMessage("- minSplitReadSupport: " + std::to_string(this->minSplitReadSupport));
-    printMessage("- [Read-pair options]");
+    printMessage("[Read-pair options]");
     printMessage("- abInsParam: " + std::to_string(this->abInsParam));
     printMessage("- minPairSupport: " + std::to_string(this->minPairSupport));
     printMessage("- pairedEndSearchSize: " + std::to_string(this->pairedEndSearchSize));

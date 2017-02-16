@@ -94,6 +94,7 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
 
     // left
     getAvgReadDepth(leftDepthAvg, rightDepthAvg, t1, p1, windowSize, breakpointSize, BreakpointCandidate::SIDE::LEFT);
+
     leftOuterDepthAvg = leftDepthAvg;
     outerDepthAvg = leftDepthAvg;
     innerDepthAvg = rightDepthAvg;
@@ -119,6 +120,13 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
 
 void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointCandidate::SIDE side)
 {
+    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || readDepthInfo[templateID].size() == 0)
+    {
+       leftAvg = 0.0;
+       rightAvg = 0.0;
+       return;
+    }
+
     if (position > readDepthInfo[templateID].size() - 1)
         position = readDepthInfo[templateID].size() - 1;
 
@@ -156,58 +164,6 @@ void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID t
     leftAvg = leftAvg / ((position - begin) + PREVENT_DIV_BY_ZERO());
     rightAvg = rightAvg / ((end - position) + PREVENT_DIV_BY_ZERO());
 }
-
-/*
-void ReadDepth::calculateReadDepth(double& depth, double& score, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointCandidate::SIDE side)
-{
-    if (position > readDepthInfo[templateID].size() - 1)
-        position = readDepthInfo[templateID].size() - 1;
-
-    TPosition begin, end;
-    if (side == BreakpointCandidate::SIDE::LEFT)    
-    {
-        if (position > windowSize)
-            begin = position - windowSize;
-        else
-            begin = 0;
-
-        if (position < readDepthInfo[templateID].size() - breakpointSize - 1)
-            end = position + breakpointSize + 1;
-        else
-            end = readDepthInfo[templateID].size() - 1;
-    }
-    else
-    {
-        if (position > breakpointSize)
-            begin = position - breakpointSize;
-        else
-            begin = 0;
-
-        if (position < readDepthInfo[templateID].size() - windowSize - 1)
-            end = position + windowSize + 1;
-        else
-            end = readDepthInfo[templateID].size() - 1;
-    }
-
-    // sum
-    double leftSum = std::accumulate(readDepthInfo[templateID].begin() + begin, readDepthInfo[templateID].begin() + position, 0.0);
-    double rightSum = std::accumulate(readDepthInfo[templateID].begin() + position, readDepthInfo[templateID].begin() + end, 0.0);
-
-    // avg
-    double leftAvg = leftSum / ((position - begin) + PREVENT_DIV_BY_ZERO());
-    double rightAvg = rightSum / ((end - position - 1) + PREVENT_DIV_BY_ZERO());
-    if ( side == BreakpointCandidate::SIDE::LEFT)
-    {
-        depth = leftAvg;
-        score = getKLScore(leftAvg, rightAvg);
-    }
-    else
-    {
-        depth = rightAvg;
-        score = getKLScore(rightAvg, leftAvg);
-    }
-}
-*/
 
 double ReadDepth::getKLScore(double p0, double p1)
 {
