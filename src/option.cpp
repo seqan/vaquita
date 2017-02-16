@@ -33,6 +33,7 @@
 // ==========================================================================
 #include "vaquita.hpp"
 #include "option.hpp"
+#include "misc.hpp"
 
 // ============================================================================
 // Functions
@@ -160,3 +161,35 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
 
     return true;
 }
+
+void OptionManager::printUserInput(void)
+{
+    printMessage("==============================");
+    printMessage("[General options]");
+    printMessage("- inputFile: " + std::string(toCString(this->inputFile)));
+    printMessage("- minMapQual: " + std::to_string(this->minMapQual));
+    printMessage("- minSVSize: " + std::to_string(this->minSVSize));
+    printMessage("- adjTol: " + std::to_string(this->adjTol));
+    printMessage("- minVote: " + std::to_string(this->minVote));
+    printMessage("- voteBound: " + std::to_string(this->voteBound));
+    printMessage("- no-pe: " + std::to_string(this->doPairedEndRead));
+    printMessage("- no-ce: " + std::to_string(this->doClippedRead));
+    printMessage("- no-re: " + std::to_string(this->doReadDepth));
+    printMessage("[Split-read option]");
+    printMessage("- minSplitReadSupport: " + std::to_string(this->minSplitReadSupport));
+    printMessage("- [Read-pair options]");
+    printMessage("- abInsParam: " + std::to_string(this->abInsParam));
+    printMessage("- minPairSupport: " + std::to_string(this->minPairSupport));
+    printMessage("- pairedEndSearchSize: " + std::to_string(this->pairedEndSearchSize));
+    printMessage("[Soft-clipped-read options]");
+    printMessage("- minClippedSeqSize: " + std::to_string(this->minClippedSeqSize));
+    printMessage("- referenceGenome: " + std::string(toCString(this->referenceGenome)));
+    printMessage("- clippedSeqErrorRate: " + std::to_string(this->clippedSeqErrorRate));
+    printMessage("- use-assembly: " + std::to_string(this->useAssembly));
+    printMessage("[Read-depth options]");
+    printMessage("- ddsHigh: " + std::to_string(this->ddsHigh));
+    printMessage("- ddsMid: " + std::to_string(this->ddsMid));
+    printMessage("- ddsLow: " + std::to_string(this->ddsLow));
+    printMessage("- readDepthWindowSize: " + std::to_string(this->readDepthWindowSize));
+    printMessage("==============================");
+}       

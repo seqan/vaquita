@@ -48,13 +48,9 @@ void SVManager::initVcf(void)
 bool SVManager::findSV(void)
 {
     findDeletion();
-    std::cerr << "del\n";
     findInversion();
-    std::cerr << "inv\n";
     findDuplication(); // required : deletion
-    std::cerr << "dup\n";
     findTranslocation(); // required : duplication
-    std::cerr << "tra\n";
     return true;
 }
 

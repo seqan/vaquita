@@ -101,10 +101,14 @@ class SVManager
 
         bool findSV(void);
         bool writeSV(void);
+        uint32_t getDeletionCount(void) { return sv[SVTYPE_DELETION()].size(); }
+        uint32_t getInversionCount(void) { return sv[SVTYPE_INVERSION()].size(); }
+        uint32_t getDuplicationCount(void) { return sv[SVTYPE_DUPLICATION()].size(); }
+        uint32_t getTranslocationCount(void) { return sv[SVTYPE_TRANSLOCATION()].size() / 6; }
 
         static std::string SVTYPE_DELETION(void) { return "DEL"; }
-        static std::string SVTYPE_DUPLICATION(void) { return "DUP"; }
         static std::string SVTYPE_INVERSION(void) { return "INV"; }
+        static std::string SVTYPE_DUPLICATION(void) { return "DUP"; }
         //static std::string SVTYPE_TRANSLOCATION(void) { return "TRA"; }
         static std::string SVTYPE_TRANSLOCATION(void) { return "BND"; }
 };

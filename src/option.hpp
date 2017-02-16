@@ -96,7 +96,8 @@ class OptionManager : public ArgumentParser
     	void init(void);
       	bool parseCommandLine(int argc, char const ** argv);
         CharString getInputFile(void) { return inputFile; }
-        
+        void printUserInput(void);
+
         // general options
         int32_t getMinMapQual(void) { return minMapQual; } 
         int32_t getMinSVSize(void) { return minSVSize; }
@@ -130,7 +131,5 @@ class OptionManager : public ArgumentParser
         double getDDSHigh(void) { return ddsHigh; }
         double getDDSMid(void) { return ddsMid; }
         double getDDSLow(void) { return ddsLow; }
-        //double getReadDepthDiffTh(double x) { return (avgReadDepth*sigMax) / (1.0 + exp(-sigSteepness * (x-(avgReadDepth * (1+sigMid))))); }
-        //double getReadDepthGlobalTh(void) { return sigMax; }
 };
 #endif // APP_OPTION_H_

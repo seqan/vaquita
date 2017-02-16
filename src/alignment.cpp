@@ -330,37 +330,15 @@ bool AlignmentManager::load(void)
         int32_t minSVSize = optionManager->getMinSVSize();
         int32_t minClipSeqSize = optionManager->getMinClippedSeqSize();
         bool checkClippedSequence, checkSplitRead, checkPairedEndRead;        
-        printTimeMessage("start");
         
         while (!atEnd(this->bamFileIn))
         {
             readRecord(record, this->bamFileIn);
             ++this->totalRecordNum;
 
-            //if (this->totalRecordNum >= 17493500)
-            /*
-            if (this->totalRecordNum % 10000000 == 0)
-            {
-                std::cerr << this->totalRecordNum << "(";
-                std::cerr << this->totalRecordNum  / 1575000000.0 << ")" << std::endl;
-                std::cerr << splitReadCount << std::endl;
-                std::cerr << pairedReadCount << std::endl;
-                std::cerr << clippedReadCount << std::endl;
-                
-                std::cerr << record.qName << std::endl;
-                std::cerr << record.rID << std::endl;
-                std::cerr << record.beginPos << std::endl;
-                std::cerr << record.rNextId << std::endl;
-                std::cerr << record.qName << std::endl;
-            }
-            if (this->totalRecordNum > 90000000)
-                break;
-                */
-
-            //if (record.rID > 2)
-            //    break;
+            if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
+                printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
             
-
             // discards low quality reads, secondary mappings
             //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
             if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
@@ -513,6 +491,8 @@ bool AlignmentManager::load(void)
         std::cerr << "ERROR: " << e.what() << std::endl;
         return false;
     }
+
+    printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
     return true;
 }
 

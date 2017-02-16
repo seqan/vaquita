@@ -52,38 +52,47 @@ int main(int argc, char const ** argv)
     BreakpointManager bpMgr(alnMgr);
     SVManager svMgr(bpMgr);
 
-    // start
-    printMessage("======================================================="); 
+    // Start
     time(&startTime);
+    oMgr.printUserInput();
 
-    // file loading
-    RUN(result, "File Loading", alnMgr.load()); // segmentation fault if fails
-    
-    printMessage("Split-read evidences : " + std::to_string(alnMgr.getSplitReadCount()));
-    printMessage("Paired-ends evidences : " + std::to_string(alnMgr.getPairedReadCount()));
-    printMessage("Clipped-read evidences : " + std::to_string(alnMgr.getClippedReadCount()));
-  
-    // find breakpoints (TODO: messages)
-    RUN(result,"Find breakpoints", bpMgr.find());
+    // Loading & extraction
+    RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // segmentation fault if fails
+    printTimeMessage("Found evidences");
+    printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");
+    printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from abnormal read-pairs.");
+    printTimeMessage(std::to_string(alnMgr.getClippedReadCount()) + " from soft-clipped reads.");
 
-    // merge breakpoints (TODO: messages)
-    RUN(result,"Merge Breakpoints", bpMgr.merge());
+    // Identification
+    RUN(result,"BREAKPOINT IDENTIFICATION", bpMgr.find());
+    printTimeMessage("Found breakpoints");
+    printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from split-read evidences.");
+    printTimeMessage(std::to_string(bpMgr.getPairedEndRead()->getBreakpointCount())  + " from read-pair evidences.");
+    printTimeMessage(std::to_string(bpMgr.getClippedRead()->getBreakpointCount())  + " from soft-clipped evidences.");
 
-    // filter breakpoints (TODO: messages)
-    RUN(result,"Filtering Breakpoints", bpMgr.applyFilter());
-    //RUN(result,"Filtering", bpMgr.filterByScore());
+    // Merging
+    RUN(result,"BREAKPOINT MERGING", bpMgr.merge());
+    printTimeMessage("Breakpoints after merging: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
+
+    // Filtering
+    RUN(result,"BREAKPOINT FILTERING", bpMgr.applyFilter());
     if (oMgr.getWriteBreakpoint() == true)
         RUN(result,"Write Breakpoints", bpMgr.writeBreakpoint());
+    printTimeMessage("Breakpoints after filtering: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
-    // classification
-    RUN(result,"Find structurial variations", svMgr.findSV());
+    // SV Classificatin
+    RUN(result,"SV IDENTIFICATION", svMgr.findSV());
+    printTimeMessage("Found SVs");
+    printTimeMessage(std::to_string(svMgr.getDeletionCount()) + " deletions (including pseudo-deletions).");
+    printTimeMessage(std::to_string(svMgr.getInversionCount()) + " inversions.");
+    printTimeMessage(std::to_string(svMgr.getDuplicationCount()) + " duplications.");
+    printTimeMessage(std::to_string(svMgr.getTranslocationCount()) + " translocations.");
 
-    // write output
-    RUN(result, "Write result", svMgr.writeSV());
+    // Result
+    RUN(result, "WRITE RESULT", svMgr.writeSV());
 
     time(&endTime);
-    printMessage("======================================================="); 
-    printMessage("Elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");
+    printMessage("Total elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");
 
     return 0;
 }

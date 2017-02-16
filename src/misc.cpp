@@ -60,11 +60,11 @@ void printTimeMessage(std::string msg)
 void startTimeMessage(std::string msg)
 {
     time(&_t1);
-    printTimeMessage("Start> " + msg);
+    printTimeMessage("[START] " + msg);
 }
 
 void endTimeMessage(std::string msg)
 {
     time(&_t2);
-    printTimeMessage("End> " + msg + " (" + std::to_string((int)difftime(_t2,_t1)) + " seconds.)");
+    printTimeMessage("[END] " + msg + " (" + std::to_string((int)difftime(_t2,_t1)) + " seconds.)");
 }

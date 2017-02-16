@@ -42,38 +42,25 @@
 
 bool BreakpointManager::merge(void)
 {
-    std::cerr<< "SR:" << this->splitReadBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "PE:" << this->pairedEndBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "CR:" << this->clippedBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "MG:" << this->mergedBreakpoints.getCandidateSet()->size() << "\n";
+    bool result = false;
 
-    // 1) find exact breakpoints
-    mergeSplitRead();
-    printTimeMessage("SplitReadEnd");
+    RUN(result,"From split-read evidences.", mergeSplitRead());    
     if (this->optionManager->doPairedEndAnalysis())
-        mergePairedEnd();
-    printTimeMessage("PE-End");
+        RUN(result,"From read-pair evidences.", mergePairedEnd());
+
     if (this->optionManager->doClippedReadAnalysis())
-        mergeClippedRead();
-    printTimeMessage("CR-End");
-    std::cerr<< "SR:" << this->splitReadBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "PE:" << this->pairedEndBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "CR:" << this->clippedBreakpoints.getCandidateSet()->size() << "\n";
-    std::cerr<< "MG:" << this->mergedBreakpoints.getCandidateSet()->size() << "\n";
+        RUN(result,"From soft-clipped evidences.", mergeClippedRead());
 
     // 2) add imprecise breakpoints
     if (this->optionManager->doPairedEndAnalysis())
-        addImpreciseBreakpoints();
-    printTimeMessage("IMP-End");
+        RUN(result,"Add imprecise breakpoints to the merged set.", addImpreciseBreakpoints());
 
     // 3) get final positions
-    findFinalBreakpoints();
-    printTimeMessage("FNL-End");
+    RUN(result,"Get representative coordinatese.", findFinalBreakpoints());
 
     // 4) add read-depth based information (needs final breakpoints)
     if (this->optionManager->doReadDepthAnalysis())
-        calculateReadDepth();
-    printTimeMessage("RD-End");
+        RUN(result,"Calcuate read-depth information", calculateReadDepth());
 }
 
 bool BreakpointManager::mergeSplitRead(void)
@@ -419,7 +406,7 @@ bool BreakpointManager::calculateReadDepth()
         avgReadDepth += info->avgReadDepth;
     }
     avgReadDepth = avgReadDepth / candidateSet->size();
-    std::cerr << "avg read-depth :" << avgReadDepth << "\n";
+    printTimeMessage("Average read-depth of the sample :" + std::to_string(avgReadDepth));
     this->optionManager->setAverageReadDepth(avgReadDepth);
 }
 
@@ -429,7 +416,6 @@ bool BreakpointManager::find(void)
 
     // split-read analysis
     RUN(result,"Split-read analysis", this->splitReadBreakpoints.analyze());
-    printMessage("Found breakpoints : " + std::to_string(this->getSplitRead()->getBreakpointCount()));
     if (result == false) 
         return false;
 
@@ -437,7 +423,6 @@ bool BreakpointManager::find(void)
     if (this->optionManager->doPairedEndAnalysis())
     {
         RUN(result,"Paired-end analysis", this->pairedEndBreakpoints.analyze());
-        printMessage("Found breakpoints : " + std::to_string(this->getPairedEndRead()->getBreakpointCount()));
         if (result == false) 
             return false;
     }
@@ -446,7 +431,6 @@ bool BreakpointManager::find(void)
     if (this->optionManager->doClippedReadAnalysis())
     {
         RUN(result,"Clipped-read analysis", this->clippedBreakpoints.analyze());
-        printMessage("Found breakpoints : " + std::to_string(this->getClippedRead()->getBreakpointCount()));
         if (result == false) 
             return false;
     }
@@ -600,12 +584,8 @@ bool BreakpointManager::filterByVote(void)
         lowerVoteBound = this->optionManager->getAverageReadDepth() * (1-this->optionManager->getVoteBound());
         upperVoteBound = this->optionManager->getAverageReadDepth() * (1+this->optionManager->getVoteBound());
     }
+    printTimeMessage("Upper & lower bounds for categorization: " + std::to_string(upperVoteBound) + "," + std::to_string(lowerVoteBound));
 
-    std::cerr << "bounds\n";
-    std::cerr << lowerVoteBound << std::endl;
-    std::cerr << upperVoteBound << std::endl;
-
-    //std::cerr << "before filter : " << candidateSet->size() << "\n";
     while (itBreakpoint != candidateSet->end())
     {
         Breakpoint* bp = *itBreakpoint;
