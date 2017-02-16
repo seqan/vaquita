@@ -173,6 +173,8 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
 void OptionManager::printUserInput(void)
 {
     printMessage("==============================");
+    printMessage(APP_NAME + std::string(" ") + SEQAN_APP_VERSION);
+    printMessage("==============================");
     printMessage("[General options]");
     printMessage("- inputFile: " + std::string(toCString(this->inputFile)));
     printMessage("- minMapQual: " + std::to_string(this->minMapQual));

@@ -337,10 +337,7 @@ bool AlignmentManager::load(void)
             ++this->totalRecordNum;
 
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
-            {
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
-                break;
-            }
             
             // discards low quality reads, secondary mappings
             //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
@@ -364,8 +361,7 @@ bool AlignmentManager::load(void)
                 // split-read
                 if (findTagKey(tagIdx, tagsDict, "SA"))
                 {
-                    //if (record.mapQ >= minMapQual) // filtering by mapping quality
-                        checkSplitRead = true;
+                    checkSplitRead = true;
                 }
                 else
                 {

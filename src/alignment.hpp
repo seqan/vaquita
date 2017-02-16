@@ -44,7 +44,7 @@ typedef std::pair<int32_t, BamAlignmentRecord> TInsBamRecordPair;
 class AlignmentManager
 {
     private :
-        static unsigned const PRINT_READ_NUMBER_PER = 10000000;
+        static unsigned const PRINT_READ_NUMBER_PER = 100000000;
         static unsigned const INS_SIZE_ESTIMATION_SAMPLE_SIZE = 10000;
         double K = 1.4826;
 
