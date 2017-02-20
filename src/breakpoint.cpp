@@ -56,11 +56,11 @@ bool BreakpointManager::merge(void)
         RUN(result,"Add imprecise breakpoints to the merged set.", addImpreciseBreakpoints());
 
     // 3) get final positions
-    RUN(result,"Get representative coordinatese.", findFinalBreakpoints());
+    RUN(result,"Get representative coordinates.", findFinalBreakpoints());
 
     // 4) add read-depth based information (needs final breakpoints)
     if (this->optionManager->doReadDepthAnalysis())
-        RUN(result,"Calcuate read-depth information", calculateReadDepth());
+        RUN(result,"Calculate read-depth information", calculateReadDepth());
 }
 
 bool BreakpointManager::mergeSplitRead(void)
