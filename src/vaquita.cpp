@@ -76,18 +76,20 @@ int main(int argc, char const ** argv)
 
     // Filtering
     RUN(result,"BREAKPOINT FILTERING", bpMgr.applyFilter());
-    if (oMgr.getWriteBreakpoint() == true)
-        RUN(result,"Write Breakpoints", bpMgr.writeBreakpoint());
-    printTimeMessage("Breakpoints after filtering: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
+    int bpCnt = bpMgr.getMergedBreakpoint()->getBreakpointCount() - bpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
+    printTimeMessage("Breakpoints after filtering: " + std::to_string(bpCnt));
 
-    // SV Classificatin
-    RUN(result,"SV IDENTIFICATION", svMgr.findSV());
+    // SV Classification
+    RUN(result,"SV CLASSIFICATION", svMgr.findSV());
     printTimeMessage("Found SVs");
-    printTimeMessage(std::to_string(svMgr.getDeletionCount()) + " deletions (including pseudo-deletions).");
+    printTimeMessage(std::to_string(svMgr.getDeletionCount()) + " deletions.");
     printTimeMessage(std::to_string(svMgr.getInversionCount()) + " inversions.");
     printTimeMessage(std::to_string(svMgr.getDuplicationCount()) + " duplications.");
     printTimeMessage(std::to_string(svMgr.getTranslocationCount()) + " translocations.");
-    printTimeMessage(std::to_string(svMgr.getBreakendCount()) + " breakends.");
+    //printTimeMessage(std::to_string(svMgr.getBreakendCount()) + " breakends.");
+
+    // SV ordering
+    RUN(result,"SV PRIORITIZATION", svMgr.orderSV());
 
     // Result
     RUN(result, "WRITE RESULT", svMgr.writeVCF());

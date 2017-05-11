@@ -39,29 +39,34 @@
 struct ReadSupportInfo
 {
     static uint16_t const MAX_VAL = 99;
-    uint16_t    splitReadSupport = 0;
-    uint16_t    pairedEndSupport = 0;
-    uint16_t    clippedReadSupport = 0;
-    double      leftReadDepth = 0.0;
-    double      rightReadDepth = 0.0;
-    double      avgReadDepth = 0.0;
-    double      leftReadDepthDiffScore = 0.0;
-    double      rightReadDepthDiffScore = 0.0;
-    bool        leftReadDepthSelected = true;
-    bool        pseudoDeletion = false;
+    double  splitReadSupport = 0;
+    double  pairedEndSupport = 0;
+    double  clippedReadSupport = 0;
+    double  leftReadDepth = 0.0;
+    double  rightReadDepth = 0.0;
+    double  avgReadDepth = 0.0;
+    double  leftReadDepthDiffScore = 0.0;
+    double  rightReadDepthDiffScore = 0.0;
+    bool    leftReadDepthSelected = true;
+    bool    pseudoDeletion = false;
 };
 
 class MergedCandidate : public BreakpointCandidate
 {    
     private:
         std::map<Breakpoint*, ReadSupportInfo> readSupportInfo;
-    
+        unsigned filteredBreakpointCount = 0;
+
     public:
         void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
 
+        
+        void setFilteredBreakpointCount(unsigned c) { filteredBreakpointCount = c; }
         void setReadSupport(Breakpoint*, ReadSupportInfo&);
         void addReadSupport(Breakpoint*, ReadSupportInfo&);
+        
         ReadSupportInfo* getReadSupport(Breakpoint*);
+        unsigned getFilteredBreakpointCount(void) { return filteredBreakpointCount; }
 };
 
 #endif // APP_MERGEDCANDIDATE_H_

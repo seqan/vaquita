@@ -69,34 +69,36 @@ void OptionManager::init()
     addOption(*this, ArgParseOption("m", "minSVSize", "Structural varation size cutoff.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "minSVSize", "50");
     addOption(*this, ArgParseOption("a", "adjTol", "Positional adjacency in nucleotide resolution.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "adjTol", "10");
-    addOption(*this, ArgParseOption("v", "minVote", "Number of evidence types that supports SV.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "minVote", "2");
-    addOption(*this, ArgParseOption("vb", "voteBound", "Parameter for categorization of SVs by depth.", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "voteBound", "0.9");
-    
+    setDefaultValue(*this, "adjTol", "50");
+    addOption(*this, ArgParseOption("c", "cutoff", "Mininum number of supporting read-pairs and split-reads", ArgParseOption::INTEGER, "INT"));
+    setDefaultValue(*this, "cutoff", "2");
+    addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
+    setDefaultValue(*this, "minVote", "-1");
+    addOption(*this, ArgParseOption("", "no-rank-aggregation", "Do not use rank-aggregation for prioritization."));
+    setDefaultValue(*this, "no-rank-aggregation", "false");
+    addOption(*this, ArgParseOption("", "report-filtered", "Report filtered result"));
+    setDefaultValue(*this, "report-filtered", "false");
+
+
     /* this option is for debugging
     addOption(*this, ArgParseOption("", "write-breakpoint", "Write breakpoint informtation in a tab-separated format (breakpoints.tsv)."));
     setDefaultValue(*this, "write-breakpoint", "false");
     */
 
-    /* not fully supported yet
-    addOption(*this, ArgParseOption("", "use-global-th", "Use global threshold. (temporary)"));
-    setDefaultValue(*this, "use-global-th", "false");
-    */
-
     addSection(*this, "Split-read evidence");
-    addOption(*this, ArgParseOption("sr", "minSplitReadSupport", "Minimum number of supporting reads.", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "minSplitReadSupport", "2");
+    addOption(*this, ArgParseOption("se", "minSplitReadSupport", "SVs supported by >=se(+ce) get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "minSplitReadSupport", "1");
 
     addSection(*this, "Read-pair evidence");
-    addOption(*this, ArgParseOption("pr", "minPairSupport", "Minimum number of supporting pairs.", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "minPairSupport", "2");
+    addOption(*this, ArgParseOption("pe", "minPairSupport", "SVs supported by >=pe get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "minPairSupport", "1");
     addOption(*this, ArgParseOption("ps", "pairedEndSearchSize", "Size of the candidate regions.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "pairedEndSearchSize", "500");
-    addOption(*this, ArgParseOption("pi", "abInsParam", "Abnormal insertion size : median +/- (standard_deviation * abInsParam).", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "abInsParam", "5.0");
-    addOption(*this, ArgParseOption("", "no-pe", "Do not use information from read-pair evidence."));
+    addOption(*this, ArgParseOption("pi", "abInsParam", "Abnormal insertion size: median +/- (MAD * pi)", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "abInsParam", "9.0");
+    addOption(*this, ArgParseOption("pd", "depthOutlier", "Depth outlier: {Q3 + (IQR * pd)}", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "depthOutlier", "1.0");
+    addOption(*this, ArgParseOption("", "no-pe", "Do not use read-pair evidence."));
     setDefaultValue(*this, "no-pe", "false");
     
     addSection(*this, "Soft-clipped evidence");
@@ -112,14 +114,12 @@ void OptionManager::init()
     setDefaultValue(*this, "no-ce", "false");
     
     addSection(*this, "Read-depth evidence");
+    addOption(*this, ArgParseOption("re", "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * re)} get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "reThreshold", "0.0");
+    addOption(*this, ArgParseOption("rs", "samplingNum", "Number of random sample to estimate the background distribution(Q3, IQR, ..) of read-depth evidence.", ArgParseOption::INTEGER, "INT"));
+    setDefaultValue(*this, "samplingNum", "100000");
     addOption(*this, ArgParseOption("rw", "readDepthWindowSize", "Window size to caclulate average read-depth around breakpoints.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "readDepthWindowSize", "100");
-    addOption(*this, ArgParseOption("rh", "ddsHigh", "Minimum depth discrepancy score for potential deletions : (rh * depth around breakpoints).", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "ddsHigh", "0.05");
-    addOption(*this, ArgParseOption("rm", "ddsMid", "Minimum depth discrepancy score for potential duplications and translocations : (rm * depth around breakpoints).", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "ddsMid", "0.001");
-    addOption(*this, ArgParseOption("rl", "ddsLow", "Minimum depth discrepancy score for insertion : (rl * depth around breakpoints).", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "ddsLow", "0.001");
+    setDefaultValue(*this, "readDepthWindowSize", "20");
     addOption(*this, ArgParseOption("", "no-re", "Do not use read-depth evidence."));
     setDefaultValue(*this, "no-re", "false");
 
@@ -142,30 +142,29 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
     getOptionValue(this->minMapQual, *this, "minMapQual"); 
     getOptionValue(this->minSVSize, *this, "minSVSize");
     getOptionValue(this->adjTol, *this, "adjTol");
+    getOptionValue(this->cutoff, *this, "cutoff");
     getOptionValue(this->minVote, *this, "minVote");
-    getOptionValue(this->voteBound, *this, "voteBound");
+    this->reportFilteredResult = isSet(*this, "report-filtered");
+    this->useRankAggregation = !isSet(*this, "no-rank-aggregation");
 
     getOptionValue(this->minSplitReadSupport, *this, "minSplitReadSupport");
 
+    this->doPairedEndRead = !isSet(*this, "no-pe");
     getOptionValue(this->abInsParam, *this, "abInsParam");
+    getOptionValue(this->depthOutlier, *this, "depthOutlier");
     getOptionValue(this->minPairSupport, *this, "minPairSupport");
     getOptionValue(this->pairedEndSearchSize, *this, "pairedEndSearchSize");
 
+    this->doClippedRead = !isSet(*this, "no-ce");
     getOptionValue(this->minClippedSeqSize, *this, "minClippedSeqSize");
     getOptionValue(this->referenceGenome, *this, "referenceGenome");
     getOptionValue(this->clippedSeqErrorRate, *this, "clippedSeqErrorRate");
     this->useAssembly = isSet(*this, "use-assembly");
 
-    getOptionValue(this->ddsHigh, *this, "ddsHigh");
-    getOptionValue(this->ddsMid, *this, "ddsMid");
-    getOptionValue(this->ddsLow, *this, "ddsLow");
-    getOptionValue(this->readDepthWindowSize, *this, "readDepthWindowSize");
-
-    //this->writeBreakpoint = isSet(*this, "write-breakpoint");
-    //this->useGlobalTh = isSet(*this, "use-global-th");
-    this->doPairedEndRead = !isSet(*this, "no-pe");
-    this->doClippedRead = !isSet(*this, "no-ce");
     this->doReadDepth = !isSet(*this, "no-re");
+    getOptionValue(this->readDepthWindowSize, *this, "readDepthWindowSize");
+    getOptionValue(this->reThreshold, *this, "reThreshold");
+    getOptionValue(this->samplingNum, *this, "samplingNum");
 
     return true;
 }
@@ -180,15 +179,18 @@ void OptionManager::printUserInput(void)
     printMessage("- minMapQual: " + std::to_string(this->minMapQual));
     printMessage("- minSVSize: " + std::to_string(this->minSVSize));
     printMessage("- adjTol: " + std::to_string(this->adjTol));
+    printMessage("- cutoff: " + std::to_string(this->cutoff));
     printMessage("- minVote: " + std::to_string(this->minVote));
-    printMessage("- voteBound: " + std::to_string(this->voteBound));
     printMessage("- no-pe: " + std::to_string(!this->doPairedEndRead));
     printMessage("- no-ce: " + std::to_string(!this->doClippedRead));
     printMessage("- no-re: " + std::to_string(!this->doReadDepth));
+    printMessage("- no-rank-aggregation: " + std::to_string(!this->useRankAggregation));
+    printMessage("- reportFilteredResult: " + std::to_string(this->reportFilteredResult));
     printMessage("[Split-read option]");
     printMessage("- minSplitReadSupport: " + std::to_string(this->minSplitReadSupport));
     printMessage("[Read-pair options]");
     printMessage("- abInsParam: " + std::to_string(this->abInsParam));
+    printMessage("- depthOutlier: " + std::to_string(this->depthOutlier));
     printMessage("- minPairSupport: " + std::to_string(this->minPairSupport));
     printMessage("- pairedEndSearchSize: " + std::to_string(this->pairedEndSearchSize));
     printMessage("[Soft-clipped-read options]");
@@ -197,9 +199,8 @@ void OptionManager::printUserInput(void)
     printMessage("- clippedSeqErrorRate: " + std::to_string(this->clippedSeqErrorRate));
     printMessage("- use-assembly: " + std::to_string(this->useAssembly));
     printMessage("[Read-depth options]");
-    printMessage("- ddsHigh: " + std::to_string(this->ddsHigh));
-    printMessage("- ddsMid: " + std::to_string(this->ddsMid));
-    printMessage("- ddsLow: " + std::to_string(this->ddsLow));
+    printMessage("- reThreshold: " + std::to_string(this->reThreshold));
+    printMessage("- samplingNum: " + std::to_string(this->samplingNum));
     printMessage("- readDepthWindowSize: " + std::to_string(this->readDepthWindowSize));
     printMessage("==============================");
-}       
+}

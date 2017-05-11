@@ -44,6 +44,9 @@
 #define RUN(x, y, z)                        {startTimeMessage(y);(x=z);endTimeMessage(y);}
 #define CharStringToStdString(x)            std::string(toCString(x))
 
+#define IS_ADJACENT(p1, p2, tol)            ( ((p2 >= p1) && (p2 - p1) <= tol) || ((p1 > p2) && (p1-p2) <= tol) )
+#define IS_OVERLAP(b1, e1, b2, e2)          (b1 <= e2 && b2 <= e1)
+
 // ==========================================================================
 // Functions
 // ==========================================================================

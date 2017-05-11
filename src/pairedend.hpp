@@ -50,11 +50,11 @@ class PairedEndRead : public BreakpointCandidate
         void prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
         {
             this->tempBreakpoints.setOptionManager(this->getOptionManager()); 
-            //this->setPositionalAdj(this->getOptionManager()->getPairedEndSearchSize()); 
         }
         bool analyze(void);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);
 		
+        bool isNew(TReadName&);
         bool isBreakpointUsed(Breakpoint* bp) { return this->breakpointIsUsedInfo[bp]; }
         void setBreakpointUsed(Breakpoint* bp, bool b) { this->breakpointIsUsedInfo[bp] = b; }
 };

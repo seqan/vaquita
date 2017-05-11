@@ -34,6 +34,268 @@
 #include "alignment.hpp"
 #include "misc.hpp"
 
+bool AlignmentManager::load(void)
+{
+    if( optionManager == NULL )
+        return false;
+
+    if ( !open(this->bamFileIn, toCString(optionManager->getInputFile())) )
+    {
+        std::cerr << "ERROR: Could not open " << optionManager->getInputFile() << std::endl;
+        return false;
+    }
+
+    CharString baiFileName = optionManager->getInputFile();
+    baiFileName += ".bai";
+    if (!open(this->baiIndex, toCString(baiFileName)))
+    {
+        std::cerr << "ERROR: Could not read BAI index file " << baiFileName << "\n";
+        return false;
+    }
+    this->pBamFileOut = new BamFileOut(context(this->bamFileIn), std::cerr, Sam());
+
+    this->totalRecordNum = 0;
+    try
+    {
+        readHeader(this->bamHeader, this->bamFileIn);
+
+        // read headers
+        for (unsigned i=0; i < length(this->bamHeader); ++i)
+        {
+            if (this->bamHeader[i].type == BamHeaderRecordType::BAM_HEADER_FIRST)
+            {
+                CharString tempStr;
+                getTagValue(tempStr, "SO", this->bamHeader[i]);
+                if (tempStr != "coordinate")
+                {
+                    printMessage("[ERROR] : BAM files must be sorted by coordinate.");
+                    exit(1);
+                }
+            }
+            break;
+        }
+
+        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+        if ( optionManager->doPairedEndAnalysis() )
+            this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+        if ( optionManager->doClippedReadAnalysis() )
+            this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+        if ( optionManager->doReadDepthAnalysis() )
+            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+
+        BamAlignmentRecord record;
+        CharString qNameWithPairInfo;
+        int32_t minMapQual = optionManager->getMinMapQual();
+        int32_t minSVSize = optionManager->getMinSVSize();
+        int32_t minClipSeqSize = optionManager->getMinClippedSeqSize();
+        bool checkClippedSequence, checkSplitRead, checkPairedEndRead;        
+        
+        while (!atEnd(this->bamFileIn))
+        {
+            readRecord(record, this->bamFileIn);
+            ++this->totalRecordNum;
+
+            if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
+                printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
+
+            //if (record.rID > 0)
+            //    break;
+
+            // discards low quality reads, secondary mappings
+            //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
+            if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
+                continue;
+
+            // calculate depth
+            if ( optionManager->doReadDepthAnalysis() )
+                this->readDepth->parseReadRecord(record.qName, record);
+
+            checkClippedSequence = false;
+            checkSplitRead = false;
+            checkPairedEndRead = false;
+
+            // primary alignment
+            if ( hasFlagSupplementary(record) == false)
+            {
+                BamTagsDict tagsDict(record.tags);
+                int32_t tagIdx;
+
+                // split-read
+                if (findTagKey(tagIdx, tagsDict, "SA"))
+                {
+                    checkSplitRead = true;
+                }
+                else
+                {
+                    // clipped-reads, filtering by sequence size
+                    int lastCigar = length(record.cigar) - 1;               
+                    if ( ((record.cigar[0].operation == 'H'  || record.cigar[0].operation == 'S') && \
+                           record.cigar[0].count >= minClipSeqSize) || \
+                         ((record.cigar[lastCigar].operation == 'H' || record.cigar[lastCigar].operation == 'S') && \
+                           record.cigar[lastCigar].count >= minClipSeqSize) )
+                    {
+                        checkClippedSequence = true;
+                    }
+                    else // indels, filtering by sequence size
+                    {
+                        for (unsigned i=1; i < lastCigar; ++i)
+                        {
+                            if ((record.cigar[i].count >= minSVSize) && \
+                                (record.cigar[i].operation == 'P'  || record.cigar[i].operation == 'I' || \
+                                 record.cigar[i].operation == 'D'  || record.cigar[i].operation == 'N'))
+                            {
+                                checkSplitRead = true;
+                            }
+                        }
+                    }
+
+                    // paired-end reads, filterirng my mapping quaility
+                    if (record.mapQ >= minMapQual)
+                    {
+                        // calculate insertion size
+                        if (hasFlagAllProper(record) == true) 
+                        {
+                            // didn't calculate the median yet
+                            if (this->maxAbInsSize == std::numeric_limits<double>::max()) 
+                            {                            
+                                // save the insertion length for median calculation
+                                this->readsForMedInsEst.push_back(std::make_pair(abs(record.tLen), record));
+
+                                // calculate the median insertion size
+                                if(this->readsForMedInsEst.size() == AlignmentManager::INS_SIZE_ESTIMATION_SAMPLE_SIZE)
+                                {
+                                    this->calcInsertSize();
+                                    this->splitRead->setInsertionInfo(this->getInsMedian(), this->getInsSD(), this->getMinAbInsSize(), this->getMaxAbInsSize());
+                                    this->pairedEndRead->setInsertionInfo(this->getInsMedian(), this->getInsSD(), this->getMinAbInsSize(), this->getMaxAbInsSize());
+                                    this->clippedRead->setInsertionInfo(this->getInsMedian(), this->getInsSD(), this->getMinAbInsSize(), this->getMaxAbInsSize());
+                                }
+                            }
+                        }
+
+                        // discordant pairs
+                        if (hasFlagNextUnmapped(record) == false) // both reads have to be mapped
+                        {
+                            // size abnormality
+                            if (this->isAbnormalInsertion(abs(record.tLen)))
+                                checkPairedEndRead = true;
+                            else if (checkPairedEndRead == false) // orientation abnormality
+                            {
+                                if (hasFlagRC(record) == hasFlagNextRC(record)) // inversion
+                                {
+                                    checkPairedEndRead = true;
+                                }
+                                else if ( (record.tLen > 0 && hasFlagRC(record)) || \
+                                          (record.tLen < 0 && hasFlagRC(record) == false) )
+                                    checkPairedEndRead = true; // swapped (<-- -->)                                
+                            }
+                        }
+                    }
+                }
+            }
+            else // suppplementray alignment("chimeric" reads)
+                checkSplitRead = true;
+
+            // do not consider this record
+            if( checkClippedSequence == false && checkSplitRead == false && checkPairedEndRead == false)
+                continue;
+
+            // discordant pair
+            qNameWithPairInfo = record.qName;
+            if ( optionManager->doPairedEndAnalysis() && checkPairedEndRead == true )
+            {
+                this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
+                ++pairedReadCount;
+            }
+
+            // contains clipped sequences
+            if ( optionManager->doClippedReadAnalysis() && checkClippedSequence == true)
+            {
+                this->clippedRead->parseReadRecord(qNameWithPairInfo, record);
+                ++clippedReadCount;
+            }
+
+            // contains split-reads
+            if ( checkSplitRead == true )
+            {
+                this->splitRead->parseReadRecord(qNameWithPairInfo, record);
+                ++splitReadCount;
+            }
+        }
+
+        // dataset contains small number of reads
+        if (this->maxAbInsSize < 0 && this->readsForMedInsEst.size() != 0)
+            this->calcInsertSize();
+
+        // check records used in median estimation
+        if (optionManager->doPairedEndAnalysis())
+        {
+            for (unsigned i=0; i < this->readsForMedInsEst.size(); ++i)
+            {
+                BamAlignmentRecord& record = this->readsForMedInsEst[i].second;
+                
+                // just check insertion size. there is no chance to get orientation abnormality in these reads.
+                if (this->isAbnormalInsertion(abs(record.tLen)))
+                {
+                    qNameWithPairInfo = record.qName;
+                    this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
+                    ++pairedReadCount;
+                }
+            }
+            this->readsForMedInsEst.clear();
+        }
+    }
+    catch (Exception const & e)
+    {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        return false;
+    }
+
+    printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
+    return true;
+}
+
+void AlignmentManager::calcInsertSize(void)
+{
+    // median
+    sort(this->readsForMedInsEst.begin(), this->readsForMedInsEst.end(), AlignmentManager::pairCompare);
+    this->insertMedian = MID_ELEMENT(readsForMedInsEst).first;
+    //double q1 = readsForMedInsEst[readsForMedInsEst.size()*0.25].first;
+    //double q3 = readsForMedInsEst[readsForMedInsEst.size()*0.75].first;
+
+    // median absolute deviation
+    for (auto it=this->readsForMedInsEst.begin(); it != this->readsForMedInsEst.end(); ++it)
+    {
+        it->first = abs(it->first - this->insertMedian);
+        if (it->first < 0) it->first *= -1;
+    }
+    sort(this->readsForMedInsEst.begin(), this->readsForMedInsEst.end(), AlignmentManager::pairCompare);
+    this->insertDev = (double) (MID_ELEMENT(readsForMedInsEst).first);
+    //this->insertDev = (double) (MID_ELEMENT(readsForMedInsEst).first) * AlignmentManager::K;
+
+    // approximated standard deviation    
+    this->minAbInsSize = this->insertMedian - (this->insertDev) * optionManager->getAbInsParam();
+    this->maxAbInsSize = this->insertMedian + (this->insertDev) * optionManager->getAbInsParam(); 
+
+    printTimeMessage("Estimated insertion size (median, MAD): " + \
+                      std::to_string((int)this->insertMedian) + \
+                      "," + std::to_string((int)this->insertDev));
+}
+
+void AlignmentManager::printRecord(BamAlignmentRecord & record) 
+{ 
+    writeRecord(*this->pBamFileOut, record); 
+}
+
+CharString AlignmentManager::getRefName(int32_t id)
+{
+    return contigNames(context(this->bamFileIn))[id];
+}
+
+int32_t AlignmentManager::getRefCount()
+{
+    return length(contigNames(context(this->bamFileIn)));
+}
+
 void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>& depth, TTemplateID rID, TPosition beginPos, TPosition endPos)
 {
     // init
@@ -99,8 +361,8 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
         }
         */
 
-       // if (hasFlagRC(record)) // wrong
-       //     reverseComplement(record.seq);
+        // if (hasFlagRC(record)) // wrong
+        //     reverseComplement(record.seq);
        
         // calc. seq
         int32_t seqStart = beginPos - record.beginPos;
@@ -227,6 +489,7 @@ void AlignmentManager::getSequence(CharString& seq, TTemplateID rID, TPosition b
     }
 }
 
+
 void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TPosition beginPos, TPosition endPos)
 {
     // init
@@ -273,260 +536,4 @@ void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TP
         for(int i=startIdx; i < endIdx; ++i)
             ++depth[i];
     }
-}
-
-bool AlignmentManager::load(void)
-{
-    if( optionManager == NULL )
-        return false;
-
-    if ( !open(this->bamFileIn, toCString(optionManager->getInputFile())) )
-    {
-        std::cerr << "ERROR: Could not open " << optionManager->getInputFile() << std::endl;
-        return false;
-    }
-
-    CharString baiFileName = optionManager->getInputFile();
-    baiFileName += ".bai";
-    if (!open(this->baiIndex, toCString(baiFileName)))
-    {
-        std::cerr << "ERROR: Could not read BAI index file " << baiFileName << "\n";
-        return false;
-    }
-    this->pBamFileOut = new BamFileOut(context(this->bamFileIn), std::cerr, Sam());
-
-    this->totalRecordNum = 0;
-    try
-    {
-        readHeader(this->bamHeader, this->bamFileIn);
-
-        // read headers
-        for (unsigned i=0; i < length(this->bamHeader); ++i)
-        {
-            if (this->bamHeader[i].type == BamHeaderRecordType::BAM_HEADER_FIRST)
-            {
-                CharString tempStr;
-                getTagValue(tempStr, "SO", this->bamHeader[i]);
-                if (tempStr != "coordinate")
-                {
-                    printMessage("[ERROR] : BAM files must be sorted by coordinate.");
-                    exit(1);
-                }
-            }
-            break;
-        }
-
-        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doPairedEndAnalysis() )
-            this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doClippedReadAnalysis() )
-            this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doReadDepthAnalysis() )
-            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-
-        BamAlignmentRecord record;
-        CharString qNameWithPairInfo;
-        int32_t minMapQual = optionManager->getMinMapQual();
-        int32_t minSVSize = optionManager->getMinSVSize();
-        int32_t minClipSeqSize = optionManager->getMinClippedSeqSize();
-        bool checkClippedSequence, checkSplitRead, checkPairedEndRead;        
-        
-        while (!atEnd(this->bamFileIn))
-        {
-            readRecord(record, this->bamFileIn);
-            ++this->totalRecordNum;
-
-            if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
-                printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
-            
-            // discards low quality reads, secondary mappings
-            //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
-            if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
-                continue;
-
-            // calculate depth
-            if ( optionManager->doReadDepthAnalysis() )
-                this->readDepth->parseReadRecord(record.qName, record);
-
-            checkClippedSequence = false;
-            checkSplitRead = false;
-            checkPairedEndRead = false;
-
-            // primary alignment
-            if ( hasFlagSupplementary(record) == false)
-            {
-                BamTagsDict tagsDict(record.tags);
-                int32_t tagIdx;
-
-                // split-read
-                if (findTagKey(tagIdx, tagsDict, "SA"))
-                {
-                    checkSplitRead = true;
-                }
-                else
-                {
-                    // clipped-reads, filtering by sequence size
-                    int lastCigar = length(record.cigar) - 1;               
-                    if ( ((record.cigar[0].operation == 'H'  || record.cigar[0].operation == 'S') && \
-                           record.cigar[0].count >= minClipSeqSize) || \
-                         ((record.cigar[lastCigar].operation == 'H' || record.cigar[lastCigar].operation == 'S') && \
-                           record.cigar[lastCigar].count >= minClipSeqSize) )
-                    {
-                        checkClippedSequence = true;
-                    }
-                    else // indels, filtering by sequence size
-                    {
-                        for (unsigned i=1; i < lastCigar; ++i)
-                        {
-                            if ((record.cigar[i].count >= minSVSize) && \
-                                (record.cigar[i].operation == 'P'  || record.cigar[i].operation == 'I' || \
-                                 record.cigar[i].operation == 'D'  || record.cigar[i].operation == 'N'))
-                            {
-                                checkSplitRead = true;
-                            }
-                        }
-                    }
-
-                    // paired-end reads, filterirng my mapping quaility
-                    if (record.mapQ >= minMapQual)
-                    {
-                        // calculate insertion size
-                        if (hasFlagAllProper(record) == true) 
-                        {
-                            // didn't calculate the median yet
-                            if (this->maxAbInsSize == std::numeric_limits<double>::max()) 
-                            {                            
-                                // save the insertion length for median calculation
-                                this->readsForMedInsEst.push_back(std::make_pair(abs(record.tLen), record));
-
-                                // calculate the median insertion size
-                                if(this->readsForMedInsEst.size() == AlignmentManager::INS_SIZE_ESTIMATION_SAMPLE_SIZE)
-                                {
-                                    this->calcInsertSize();
-                                    this->splitRead->setInsertionInfo(this->getInsMedian(), this->getInsSD());
-                                    this->pairedEndRead->setInsertionInfo(this->getInsMedian(), this->getInsSD());
-                                    this->clippedRead->setInsertionInfo(this->getInsMedian(), this->getInsSD());
-                                }
-                            }
-                        }
-
-                        // abnormal pairs
-                        if (hasFlagNextUnmapped(record) == false) // both reads have to be mapped
-                        {
-                            // size abnormality
-                            if (this->isAbnormalInsertion(abs(record.tLen)))
-                                checkPairedEndRead = true;
-                            else if (checkPairedEndRead == false) // orientation abnormality
-                            {
-                                if (hasFlagRC(record) == hasFlagNextRC(record))
-                                    checkPairedEndRead = true; // inverted
-                                else if ( (record.tLen > 0 && hasFlagRC(record)) || \
-                                          (record.tLen < 0 && hasFlagRC(record) == false) )
-                                    checkPairedEndRead = true; // swapped (<-- -->)
-                            }
-                        }
-                    }
-                }
-            }
-            else // suppplementray alignment("chimeric" reads)
-                checkSplitRead = true;
-
-            // do not consider this record
-            if( checkClippedSequence == false && checkSplitRead == false && checkPairedEndRead == false)
-                continue;
-
-            // abnormal pair
-            qNameWithPairInfo = record.qName;
-            if ( optionManager->doPairedEndAnalysis() && checkPairedEndRead == true )
-            {
-                this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
-                ++pairedReadCount;
-            }
-
-            if ( hasFlagFirst(record) )
-                qNameWithPairInfo += "/1";
-            if ( hasFlagLast(record) )
-                qNameWithPairInfo += "/2";
-
-            // contains clipped sequences
-            if ( optionManager->doClippedReadAnalysis() && checkClippedSequence == true)
-            {
-                this->clippedRead->parseReadRecord(qNameWithPairInfo, record);
-                ++clippedReadCount;
-            }
-
-            // contains split-reads
-            if ( checkSplitRead == true )
-            {
-                this->splitRead->parseReadRecord(qNameWithPairInfo, record);
-                ++splitReadCount;
-            }
-        }
-
-        // dataset contains small number of reads
-        if (this->maxAbInsSize < 0 && this->readsForMedInsEst.size() != 0)
-            this->calcInsertSize();
-
-        // check records used in median estimation
-        if (optionManager->doPairedEndAnalysis())
-        {
-            for (unsigned i=0; i < this->readsForMedInsEst.size(); ++i)
-            {
-                BamAlignmentRecord& record = this->readsForMedInsEst[i].second;
-                
-                // just check insertion size. there is no chance to get orientation abnormality in these reads.
-                if (this->isAbnormalInsertion(abs(record.tLen)))
-                {
-                    qNameWithPairInfo = record.qName;
-                    this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
-                    ++pairedReadCount;
-                }
-            }
-            this->readsForMedInsEst.clear();
-        }
-    }
-    catch (Exception const & e)
-    {
-        std::cerr << "ERROR: " << e.what() << std::endl;
-        return false;
-    }
-
-    printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
-    return true;
-}
-
-void AlignmentManager::calcInsertSize(void)
-{
-    // median
-    sort(this->readsForMedInsEst.begin(), this->readsForMedInsEst.end(), AlignmentManager::pairCompare);
-    this->insertMedian = MID_ELEMENT(readsForMedInsEst).first;
-
-    // median absolute deviation
-    for (auto it=this->readsForMedInsEst.begin(); it != this->readsForMedInsEst.end(); ++it)
-        it->first = abs(it->first - this->insertMedian);
-    sort(this->readsForMedInsEst.begin(), this->readsForMedInsEst.end(), AlignmentManager::pairCompare);
-
-    // approximated standard deviation
-    this->insertDev = (double) (MID_ELEMENT(readsForMedInsEst).first) * AlignmentManager::K;
-    this->minAbInsSize = this->insertMedian - (this->insertDev) * optionManager->getAbInsParam();
-    this->maxAbInsSize = this->insertMedian + (this->insertDev) * optionManager->getAbInsParam(); 
-
-    printTimeMessage("Estimated insertion size (median,s.d.) : " + \
-                      std::to_string((int)this->insertMedian) + \
-                      "," + std::to_string((int)this->insertDev));
-}
-
-void AlignmentManager::printRecord(BamAlignmentRecord & record) 
-{ 
-    writeRecord(*this->pBamFileOut, record); 
-}
-
-CharString AlignmentManager::getRefName(int32_t id)
-{
-    return contigNames(context(this->bamFileIn))[id];
-}
-
-int32_t AlignmentManager::getRefCount()
-{
-    return length(contigNames(context(this->bamFileIn)));
 }

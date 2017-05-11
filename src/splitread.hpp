@@ -49,11 +49,14 @@ class SplitRead : public BreakpointCandidate
         std::map<TReadName, bool> multChrmRead; // mapped to multiple chromosomes
         BamFileIn* fileIn;
 
+        bool updateBreakpointByIndels(std::vector<BreakpointEvidence>&);
+
     public:
         bool analyze(void);
         bool analyzeRead(TReadName&);
         bool analyzeCurrentChromosome();
         void parseReadRecord(TReadName&, BamAlignmentRecord&);
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
+        void checkReadRecord(TReadName&, BamAlignmentRecord&);
 };
 #endif // APP_SPLITREAD_H_

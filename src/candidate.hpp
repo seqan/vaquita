@@ -71,8 +71,8 @@ struct BreakpointEvidence
     static TPosition const INVALID_POS = MaxValue<TPosition>::VALUE;
     static TTemplateID const NOVEL_TEMPLATE = MaxValue<TTemplateID>::VALUE;
 
-    // P.: -><-, S.: <-->, I.: ->->
-    enum ORIENTATION {PROPERLY_ORIENTED, SWAPPED, INVERSED, NOT_DECIDED};
+    // P.: -><-, S.: <-->, I.: ->->, LEFT/RIGHT CLIP : temporary use.
+    enum ORIENTATION {PROPERLY_ORIENTED_LARGE=0, PROPERLY_ORIENTED_SMALL=1, SWAPPED=2, INVERTED=3, NOT_DECIDED=4, NUM_OF_ORIENTATION=5};
     
     SequenceSegment leftSegment, rightSegment;
     TReadID suppRead;
@@ -115,7 +115,7 @@ typedef std::set<Breakpoint*>                                       TBreakpointS
 typedef std::vector<Breakpoint*>                                    TBreakpointVector;
 typedef std::pair<std::pair<TPosition, TPosition>, Breakpoint*>     TPosBreakpoint;
 typedef std::vector<TPosBreakpoint>                                 TPosBreakpointVector;
-typedef std::map<TPosition, TPosBreakpointVector*>                    TBreakpointBinIndex;
+typedef std::map<TPosition, TPosBreakpointVector*>                  TBreakpointBinIndex;
 typedef std::map<TTemplateID, TBreakpointBinIndex>                  TBreakpointIndex; 
 
 class BreakpointCandidate
@@ -127,6 +127,8 @@ class BreakpointCandidate
         int32_t posAdj;
         double insertMedian;
         double insertDev;
+        double maxAbInsSize;
+        double minAbInsSize;
 
         OptionManager* op;
         
@@ -142,7 +144,7 @@ class BreakpointCandidate
         void findOverlap(TBreakpointSet&, TBreakpointBinIndex*, TPosition, TPosition, BreakpointEvidence::ORIENTATION, bool);
 
     public :
-        enum SIDE {LEFT, RIGHT};
+        enum SIDE {LEFT, RIGHT, BOTH};
 
         BreakpointCandidate();
         ~BreakpointCandidate();
@@ -151,9 +153,11 @@ class BreakpointCandidate
         int32_t getPositionalAdj(void) { return this->posAdj; }
 
         // insertion information
-        void setInsertionInfo(double, double);
+        void setInsertionInfo(double, double, double, double);
         double getInsMedian() { return insertMedian; }
         double getInsSD() { return insertDev; }
+        double getMaxAbInsSize() { return maxAbInsSize; }
+        double getMinAbInsSize() { return minAbInsSize; }
 
         // options
         void setOptionManager(OptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
@@ -162,33 +166,36 @@ class BreakpointCandidate
                         
         // operations for breakpoints
         TReadID getCurrentReadID(void) { return this->currentReadID; }
-        void updatetCurrentReadID(void) { ++this->currentReadID; }
-        TReadID getAndUpdateCurrentReadID(void) { return this->currentReadID++; }
+        TReadID getNextReadID(void) { this->currentReadID++; }
 
         std::set<Breakpoint*>* getCandidateSet() { return &this->breakpoints; }     // GET candidate set
         void findMatchedBreakpoint(TBreakpointSet&, TBreakpointSet&, Breakpoint*, bool checkOrientation=true);  // FIND matched breakpoints
+        void findMatchedBreakpoint(TBreakpointSet&, TBreakpointSet&, TBreakpointSet&, Breakpoint*, bool checkBothSide=true);
+
         Breakpoint* copyAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
         Breakpoint* moveAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
         TBreakpointSet::iterator mergeBreakpoint(Breakpoint*, Breakpoint*);         // MERGE two breakpoints
         TBreakpointSet::iterator removeBreakpoint(TBreakpointSet::iterator);        // REMOVE breakpoints
-        Breakpoint* updateBreakpoint(Breakpoint*, bool&);                           // UPDATE breakpoints including adjustment of indicies
-        Breakpoint* updateBreakpoint(BreakpointEvidence&, bool&);
+        Breakpoint* updateBreakpoint(Breakpoint*, bool, bool&);  // UPDATE breakpoints including adjustment of indicies
+        Breakpoint* updateBreakpoint(BreakpointEvidence&, bool, bool&);
         void updateBreakpointIndex(Breakpoint*);                                    // UPDATE index only
         TBreakpointSet::iterator removeBreakpoint(Breakpoint*);
-        void updateBreakpoint(std::vector<BreakpointEvidence>&, bool);
-
+        
         bool isOverlap(SequenceSegment&, SequenceSegment&);                         // checking for overlap of 2 intervals
         bool isAdjacent(SequenceSegment&, SequenceSegment&);                        // checking for adjancy of 2 intervals
 
         // defined by derived functions
         virtual void prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn) { return; }
         virtual void parseReadRecord(TReadName&, BamAlignmentRecord&) { return; }
+        virtual void checkReadRecord(TReadName&, BamAlignmentRecord&) { return; }
         virtual bool analyze(void) { return true; }
         virtual void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*) { return; }
+        virtual bool isNew(TReadName&) { return true; }
       
         // static functions
         static bool isOverlap(TPosition, TPosition, TPosition, TPosition);                 
         static bool isAdjacent(TPosition, TPosition, TPosition, TPosition, TPosition);
+        static bool isAdjacent(TPosition, TPosition, TPosition);
         static void setPositionWithAdj(TPosition &, TPosition &, TPosition);          // make extended intervals using positional adjancy
         static void printBreakpoint(Breakpoint*);                                   // print breakpoints to stderr
         static void printBreakpoint(Breakpoint&);
@@ -201,6 +208,8 @@ class BreakpointCandidate
         static bool isMatchedBreakpoint(Breakpoint*, Breakpoint*);
         static void updateLeftMinMaxPos(Breakpoint*);
         static void updateRightMinMaxPos(Breakpoint*);
+        static void clearPosInfo(Breakpoint*);
+        static double PREVENT_DIV_BY_ZERO(void) { return 0.0000000001; }
 };
 
 #endif // APP_BREAKPOINTCANDIDATE_H_

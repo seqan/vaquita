@@ -52,9 +52,16 @@ struct FinalBreakpointInfo
     TPosition rightPosition;
     bool isRightReverse;
 
-    double score;
+    double score = 0;
+    double gcContent = 0.0;
+    double sequenceComplexity = 0.0;
+    char vote = 0;
+
+    bool filtered = false;
+    bool imprecise = false;
 };
 
+typedef std::map<CharString, unsigned>  TKmerSet;
 class BreakpointManager
 {
     private :
@@ -72,14 +79,16 @@ class BreakpointManager
         bool mergeSplitRead();
         bool mergePairedEnd();
         bool mergeClippedRead();
-
         bool findFinalBreakpoints(void);
 
-        bool filterByVote(void);
+        bool filterByEvidenceSumAndVote(void);
+        
+        bool priByRankAgg(void);
+        bool priByEvidenceSum(void);
 
         bool calculateReadDepth();
         bool addImpreciseBreakpoints();
-        void addNewPositionsByClippedSequence(TFoundPosition&, Breakpoint*, bool);
+        void addNewPositionsByClippedSequence(TFoundPosition&, Breakpoint*, bool isLeftClip);
        
     public :
     	BreakpointManager(AlignmentManager& aln) { init(aln); }
@@ -89,9 +98,13 @@ class BreakpointManager
         bool merge(void);
         bool find(void);
         bool applyFilter(void);
+        bool applyPrioritization(void);
+        bool applyNormalization(void);
+        bool rescueByCombinedEvidence(void);
+        void writeBreakpoint(void);
+        bool getSequenceFeature(void);
+        void getNTCount(CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
 
-        bool writeBreakpoint(void);
-        
         AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
         OptionManager* getOptionManager(void) { return this->optionManager; }
         BreakpointCandidate* getSplitRead(void) { return &this->splitReadBreakpoints; }
@@ -100,6 +113,9 @@ class BreakpointManager
         BreakpointCandidate* getReadDepth(void) { return &this->readDepthBreakpoints; }
         MergedCandidate* getMergedBreakpoint(void) { return &this->mergedBreakpoints; }
         FinalBreakpointInfo* getFinalBreakpointInfo(Breakpoint* bp) { return &this->finalBreakpoints[bp]; }
+        double getReTH(void) { return readDepthBreakpoints.getReTH(); }
+        double getDepthTH(void) { return readDepthBreakpoints.getDepthTH(); }
+        double getDepthMedian(void) { return readDepthBreakpoints.getMedianDepth(); }
 };
 
 #endif // APP_BREAKPOINT_H_

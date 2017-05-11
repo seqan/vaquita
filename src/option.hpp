@@ -53,11 +53,14 @@ class OptionManager : public ArgumentParser
         int32_t minMapQual;
         int32_t minSVSize;
         int32_t adjTol;
+        int32_t cutoff;
         int32_t minVote;
-        double voteBound;
+        int32_t priMethod;
+        int32_t filterMethod;
         unsigned int threadCount;
         bool writeBreakpoint;
-        bool useGlobalTh;
+        bool reportFilteredResult;
+        bool useRankAggregation;
 
         // for split-read
         double minSplitReadSupport;
@@ -65,9 +68,10 @@ class OptionManager : public ArgumentParser
         // for paired-end
         double minPairSupport;
         double abInsParam;
+        double depthOutlier;
         int32_t pairedEndSearchSize;
         bool doPairedEndRead;
-
+        
         // for clipped read
         double minClippedReadSupport;
         int32_t minClippedSeqSize;
@@ -77,10 +81,8 @@ class OptionManager : public ArgumentParser
         bool useAssembly;
 
         // for read-depth analysis
-        double ddsHigh;
-        double ddsMid;
-        double ddsLow;
-        double avgReadDepth;
+        double reThreshold;
+        int32_t samplingNum;
         int32_t readDepthWindowSize;
         bool doReadDepth;
 
@@ -102,34 +104,36 @@ class OptionManager : public ArgumentParser
         int32_t getMinMapQual(void) { return minMapQual; } 
         int32_t getMinSVSize(void) { return minSVSize; }
         int32_t getAdjTol(void) { return adjTol; }
+        int32_t getCutoff(void) { return cutoff; }
         int32_t getMinVote(void) { return minVote; }
-        double getVoteBound(void) { return voteBound; }
+        int32_t getPriMethod(void) { return priMethod; }
+        int32_t getFilterMethod(void) { return filterMethod; }
         bool getWriteBreakpoint(void) { return writeBreakpoint; }
-        bool useGlobalThreshold(void) { return useGlobalTh; }
+        bool getReportFilteredResult(void) { return reportFilteredResult; }
+        bool getUseRankAggregation(void) { return useRankAggregation; }
+        void setMinVote(int v) { this->minVote = v;}
 
         // for split-read
         double getMinSplitReadSupport(void) { return minSplitReadSupport; }        
 
         // for paired-end
+        bool doPairedEndAnalysis(void) { return doPairedEndRead; }
         double getAbInsParam(void) { return abInsParam; }
         double getMinPairSupport(void) { return minPairSupport; }
         double getPairedEndSearchSize(void) { return pairedEndSearchSize;}
-        bool doPairedEndAnalysis(void) { return doPairedEndRead; }
+        double getDepthOutlier(void) { return depthOutlier;}
 
         // for clipped read
+        bool doClippedReadAnalysis(void) { return doClippedRead; }
         int32_t getMinClippedSeqSize(void) { return minClippedSeqSize; }
         CharString getReferenceGenome(void) { return referenceGenome; }
         double getClippedSeqErrorRate(void) { return clippedSeqErrorRate; }
         int32_t isUsingAssembly(void) { return useAssembly; }
-        bool doClippedReadAnalysis(void) { return doClippedRead; }
 
         // for read-depth analysis
-        void setAverageReadDepth(double x) { avgReadDepth = x; }
-        double getAverageReadDepth(void) { return avgReadDepth; }
         bool doReadDepthAnalysis(void) { return doReadDepth; }
         int32_t getReadDepthWindowSize(void) { return readDepthWindowSize; }
-        double getDDSHigh(void) { return ddsHigh; }
-        double getDDSMid(void) { return ddsMid; }
-        double getDDSLow(void) { return ddsLow; }
+        double getReOutlierCutoff(void) { return reThreshold; }
+        int32_t getSamplingNum(void) { return samplingNum; }
 };
 #endif // APP_OPTION_H_

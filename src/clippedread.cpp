@@ -40,36 +40,103 @@
 #include "misc.hpp"
 #include "clippedread.hpp"
 
-bool ClippedRead::searchPairRegion(TFoundPosition& foundPositions, Breakpoint* bp, int32_t &bestScore, CharString& query, SIDE searchSide, bool useLocalAlignment, bool useReverseComplement)
+void ClippedRead::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
 {
-    // get search region
-    TTemplateID refID;
-    TPosition refBeginPosInGenome, refEndPosInGenome;
-    if (searchSide == SIDE::RIGHT)
+    for (unsigned i=0; i < length(header); ++i)
     {
-        refBeginPosInGenome = bp->minRightPos;
-        refEndPosInGenome = bp->maxRightPos;
-        refID = bp->rightTemplateID;
+        if (header[i].type == BamHeaderRecordType::BAM_HEADER_REFERENCE)
+        {
+            CharString templateName, templateLengthStr;
+            getTagValue(templateName, "SN", header[i]);
+            getTagValue(templateLengthStr, "LN", header[i]);
+            toCString(templateLengthStr);
+               
+            TTemplateID rID = BreakpointEvidence::NOVEL_TEMPLATE;
+            TPosition templateLength = BreakpointEvidence::INVALID_POS;
+            getIdByName(rID, contigNamesCache(context(fileIn)), templateName);
+            templateLength = std::stol( std::string(toCString(templateLengthStr)) );
+
+            this->templateSize[rID] = templateLength;
+        }
     }
-    else
-    { 
-        refBeginPosInGenome = bp->minLeftPos;
-        refEndPosInGenome = bp->maxLeftPos;
-        refID = bp->leftTemplateID;
+}
+
+void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION orientation, const BreakpointCandidate::SIDE side, Breakpoint &bp, TTemplateID &rID, TPosition &begin, TPosition &end)
+{
+    if (orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
+    {
+        if (side == BreakpointCandidate::SIDE::RIGHT)
+        {
+            begin = bp.minRightPos;
+            end = bp.maxRightPos;
+            rID = bp.rightTemplateID;
+        }
+        else
+        { 
+            begin = bp.minLeftPos;
+            end = bp.maxLeftPos;
+            rID = bp.leftTemplateID;
+        }
+    }
+    else if (orientation == BreakpointEvidence::ORIENTATION::INVERTED)
+    {
+        if (side == BreakpointCandidate::SIDE::RIGHT)
+        {
+            begin = bp.minRightPos;
+            end = bp.maxRightPos;
+            rID = bp.rightTemplateID;
+        }
+        else
+        { 
+            begin = bp.minLeftPos;
+            end = bp.maxLeftPos;
+            rID = bp.leftTemplateID;
+        }
+    }
+    else if (orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
+    {
+        if (side == BreakpointCandidate::SIDE::RIGHT)
+        {
+            begin = bp.minRightPos;
+            end = bp.maxRightPos;
+            rID = bp.rightTemplateID;
+        }
+        else
+        { 
+            begin = bp.minLeftPos;
+            end = bp.maxLeftPos;
+            rID = bp.leftTemplateID;
+        }
     }
 
     // extend search region 
     int32_t PESearchSize = this->getOptionManager()->getPairedEndSearchSize();
-    int32_t searchSize = (refEndPosInGenome - refBeginPosInGenome + 1);
+    int32_t searchSize = (end - begin + 1);
     if ( searchSize < PESearchSize)
-        BreakpointCandidate::setPositionWithAdj( refBeginPosInGenome, refEndPosInGenome, (PESearchSize - searchSize) / 2.0);
+        BreakpointCandidate::setPositionWithAdj( begin, end, (PESearchSize - searchSize) / 2.0);
+}
 
+bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
+                                    Breakpoint* bp, \
+                                    int32_t &bestScore, \
+                                    CharString& query, \
+                                    SIDE searchSide, \
+                                    bool useLocalAlignment, \
+                                    bool useReverseComplement, \
+                                    BreakpointEvidence::ORIENTATION orientation)
+{
+    // get search region
+    TTemplateID refID;
+    TPosition refBeginPosInGenome, refEndPosInGenome;
+    setSearchRegionByOrientation(orientation, searchSide, *bp, refID, refBeginPosInGenome, refEndPosInGenome);
     if(refBeginPosInGenome < 0 || refBeginPosInGenome > refEndPosInGenome)
         return false;
 
     // get reference sequence
     CharString ref;
     this->getReferenceSequence(ref, refID, refBeginPosInGenome, refEndPosInGenome);
+    if (ref == "")
+        return false;
     
     // search
     TFoundPosition newFoundPositions;
@@ -101,6 +168,7 @@ bool ClippedRead::searchPairRegion(TFoundPosition& foundPositions, Breakpoint* b
                 itNewFound->sequenceSegment.endPos += refBeginPosInGenome;
                 itNewFound->matchedBp = bp;
                 itNewFound->isReverseComplemented = useReverseComplement;
+                itNewFound->orientation = orientation;
 
                 // check duplicates
                 bool duplicated = false;
@@ -122,11 +190,18 @@ bool ClippedRead::searchPairRegion(TFoundPosition& foundPositions, Breakpoint* b
     return false;
 }
 
-bool ClippedRead::searchTwilightZone(TFoundPosition& foundPositions, Breakpoint* bp, int32_t& bestScore, CharString& query, SIDE searchSide, bool useReverseComplement)
+bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
+                                      Breakpoint* bp, \
+                                      int32_t& bestScore, \
+                                      CharString& query, \
+                                      SIDE searchSide, \
+                                      bool useReverseComplement, \
+                                      BreakpointEvidence::ORIENTATION orientation)
 {
     // get search region
     int32_t minSVSize = this->getOptionManager()->getMinSVSize();
-    int32_t searchSize = length(query) + (this->getInsSD() * this->getOptionManager()->getAbInsParam());
+    //int32_t searchSize = length(query) + (this->getInsSD() * this->getOptionManager()->getAbInsParam());
+    int32_t searchSize = this->getMaxAbInsSize();
     TTemplateID refID;
     TPosition refBeginPosInGenome, refEndPosInGenome;
     if (searchSide == SIDE::RIGHT)
@@ -148,6 +223,8 @@ bool ClippedRead::searchTwilightZone(TFoundPosition& foundPositions, Breakpoint*
     // get reference sequence
     CharString ref;
     this->getReferenceSequence(ref, refID, refBeginPosInGenome, refEndPosInGenome);
+    if (ref == "")
+        return false;
 
     // search
     TFoundPosition newFoundPositions;
@@ -172,6 +249,7 @@ bool ClippedRead::searchTwilightZone(TFoundPosition& foundPositions, Breakpoint*
                 itNewFound->sequenceSegment.endPos += refBeginPosInGenome;
                 itNewFound->matchedBp = bp;
                 itNewFound->isReverseComplemented = useReverseComplement;
+                itNewFound->orientation = orientation;
 
                 // check duplicates
                 bool duplicated = false;
@@ -405,13 +483,21 @@ void ClippedRead::setOptionManager(OptionManager* op)
     }
 }
 
-void ClippedRead::getReferenceSequence(CharString& seq, unsigned templateID, int32_t start, int32_t end)
+void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end)
 {
     clear(seq);
-    readRegion(seq, this->faiIndex, templateID, start, end);    
+    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || start < 0 || end >= templateSize[templateID])
+        return;
+    try {
+        readRegion(seq, this->faiIndex, templateID, start, end);    
+    }
+    catch (...)
+    {
+        ;
+    }
 }
 
-void ClippedRead::getReferenceSequence(CharString& seq, CharString chr, int32_t start, int32_t end)
+void ClippedRead::getReferenceSequence(CharString& seq, CharString chr, TPosition start, TPosition end)
 {
     unsigned templateID;
     if (!getIdByName(templateID, this->faiIndex, chr))
@@ -430,35 +516,8 @@ void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &recor
 
     // parse CIGAR
     AlignmentInfo alnInfo;
-    TReadID readID = getAndUpdateCurrentReadID();
+    TReadID readID = this->getNextReadID();
     parseCIGAR(alnInfo, readID, record, false, true, this->getOptionManager()->getMinSVSize(), this->getOptionManager()->getMinClippedSeqSize());
-
-    //DEBUG
-    /*
-    if(id == "22-17654419-:22-17654596--,22-17654683-D-,22-17654707--:::::::::::537325:0/2")
-    {
-        std::cerr << "gotyou\n";
-
-        auto itClip = alnInfo.clippedList.begin();
-        while (itClip != alnInfo.clippedList.end())
-        {
-            BreakpointEvidence& be = *(itClip++);
-
-            std::cerr << "start\n";
-            std::cerr << be.leftSegment.templateID << "\n";
-            std::cerr << be.leftSegment.beginPos << "\n";
-            std::cerr << be.leftSegment.endPos << "\n";
-            std::cerr << be.leftSegment.isReverse << "\n";
-
-            std::cerr << be.rightSegment.templateID << "\n";
-            std::cerr << be.rightSegment.beginPos << "\n";
-            std::cerr << be.rightSegment.endPos << "\n";
-            std::cerr << be.rightSegment.isReverse << "\n";
-
-            std::cerr << "end\n";
-        }
-    }
-    */
 
     // for all clipped segments
     bool isNew;
@@ -468,7 +527,7 @@ void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &recor
         BreakpointEvidence& be = *(itClip++);
         be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
             
-        Breakpoint* bp = this->updateBreakpoint(be, isNew);
+        Breakpoint* bp = this->updateBreakpoint(be, true, isNew);
         if (isNew == true)
         {
             bp->bFoundExactPosition = false;

@@ -88,35 +88,33 @@
 template <typename TRawData>
 class IntervalIndex
 {
-    typedef uint32_t						TBin;
-    typedef uint32_t						TPosition;
-	typedef std::pair<TPosition, TPosition>	TInterval;
-	typedef std::pair<TInterval, TRawData>	TData;
-	typedef std::vector<TData>				TDataVector;
-	typedef std::set<TRawData>				TRawDataSet;
+    typedef uint32_t                           TBin;
+    typedef uint32_t                           TPosition;
+	typedef std::pair<TPosition, TPosition>    TInterval;
+	typedef std::pair<TInterval, TRawData>     TRawDataWithInterval;
+	typedef std::vector<TRawDataWithInterval>  TDataVector;
+	typedef std::set<TRawData>                 TRawDataSet;
 
 	private :
 		static TBin const INVALID_POS = std::numeric_limits<TBin>::max();
 		TPosition binSize;
+        TPosition adjacency;
 		std::map<TBin, TDataVector*> index;
 
 		inline TBin getBin(TPosition p) { return (p / this->binSize); }
 		bool (*isMatchedFunc)(TRawData, TRawData);
 
 	public :
-		IntervalIndex(TPosition binSize, bool (*isMatchedFunc)(TRawData, TRawData));
+		IntervalIndex(TPosition binSize, TPosition adjacency, bool (*isMatchedFunc)(TRawData, TRawData));
 		~IntervalIndex();
 
-		bool add(TPosition, TPosition, TRawData);
+		bool add(const TPosition, const TPosition, const TRawData);
 		bool remove(TPosition, TPosition, TRawData);
-		bool find(TRawDataSet&, TPosition, TPosition, TRawData);
-
-		bool add(TInterval&, TRawData);
-		bool remove(TInterval&, TRawData);
-		bool find(TRawDataSet&, TInterval&, TRawData);
+		bool find(TRawDataSet&, const TPosition, const TPosition, const TRawData);
 		
 		static inline bool isValidInterval(TPosition, TPosition);
-		static inline bool isOverlap(TPosition, TPosition, TPosition, TPosition);
+		inline bool isOverlap(TPosition, TPosition, TPosition, TPosition);
+        inline bool isAdjacent(TPosition, TPosition, TPosition, TPosition);
 };
 
 template <typename TRawData>
@@ -129,6 +127,15 @@ bool IntervalIndex<TRawData>::isOverlap(TPosition beginPos1, TPosition endPos1, 
 }
 
 template <typename TRawData>
+bool IntervalIndex<TRawData>::isAdjacent(TPosition beginPos1, TPosition endPos1, TPosition beginPos2, TPosition endPos2)
+{
+    return ( (endPos1 <= beginPos2 and ((beginPos2 - endPos1) <= this->adjacency)) or \
+             (endPos2 <= beginPos1 and ((beginPos1 - endPos2) <= this->adjacency)) );
+}
+
+
+
+template <typename TRawData>
 inline bool IntervalIndex<TRawData>::isValidInterval(TPosition begin, TPosition end)
 {
 	return (begin != IntervalIndex::INVALID_POS && \
@@ -137,7 +144,7 @@ inline bool IntervalIndex<TRawData>::isValidInterval(TPosition begin, TPosition 
 }
 
 template <typename TRawData>
-bool IntervalIndex<TRawData>::add(TPosition begin, TPosition end, TRawData data)
+bool IntervalIndex<TRawData>::add(const TPosition begin, const TPosition end, const TRawData data)
 {
 	if (isValidInterval(begin, end) == false)
 		return false;
@@ -160,7 +167,7 @@ bool IntervalIndex<TRawData>::add(TPosition begin, TPosition end, TRawData data)
 }
 
 template <typename TRawData>
-bool IntervalIndex<TRawData>::remove(TPosition begin, TPosition end, TRawData data)
+bool IntervalIndex<TRawData>::remove(const TPosition begin, const TPosition end, const TRawData data)
 {
 	if (isValidInterval(begin, end) == false)
 		return false;
@@ -175,33 +182,30 @@ bool IntervalIndex<TRawData>::remove(TPosition begin, TPosition end, TRawData da
         if (this->index.find(bin) == this->index.end())
         	continue;
 
-		auto it = this->index[bin]->begin();
-      	while (it != this->index[bin]->end())
-       	{
+        auto it = this->index[bin]->begin();
+        while (it != this->index[bin]->end())
+        {
             if ( it->second == data )
-            {
                 it = this->index[bin]->erase(it);
-                if (removed == false) removed = true;
-            }
             else
                 ++it;
         }
     }
 
-    return removed;
+    return true;
 }
 
 template <typename TRawData>
-bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, TPosition begin, TPosition end, TRawData data)
+bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, const TPosition begin, const TPosition end, const TRawData data)
 {
-	outVector.clear();
 	if (isValidInterval(begin, end) == false)
 		return false;
-
+    
 	TBin minBin, maxBin;
-	minBin = this->getBin(begin);
-	maxBin = this->getBin(end);
+	minBin = this->getBin(begin) - 1;
+	maxBin = this->getBin(end) + 1;
 
+    outVector.clear();
 	for (TBin bin = minBin; bin <= maxBin; ++bin)
     {
         if (this->index.find(bin) == this->index.end())
@@ -212,6 +216,8 @@ bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, TPosition begin, TPos
        	{
        		if ( isOverlap(begin, end, it->first.first, it->first.second) && (this->isMatchedFunc)(data, it->second) == true)
        			outVector.insert(it->second);
+            else if ( isAdjacent(begin, end, it->first.first, it->first.second) && (this->isMatchedFunc)(data, it->second) == true)
+                outVector.insert(it->second);
             ++it;
         }
     }
@@ -219,29 +225,13 @@ bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, TPosition begin, TPos
     return true;
 }
 
-template <typename TRawData>
-bool IntervalIndex<TRawData>::add(TInterval& interval, TRawData data)
-{
-    return add(interval.first, interval.second, data);
-}
 
 template <typename TRawData>
-bool IntervalIndex<TRawData>::remove(TInterval& interval, TRawData data)
-{
-    return remove(interval.first, interval.second, data);
-}
-
-template <typename TRawData>
-bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, TInterval& interval, TRawData data)
-{
-    return find(outVector, interval.first, interval.second, data);
-}
-
-template <typename TRawData>
-IntervalIndex<TRawData>::IntervalIndex(TPosition binSize, bool (*isMatchedFunc)(TRawData, TRawData))
+IntervalIndex<TRawData>::IntervalIndex(TPosition binSize, TPosition adj, bool (*isMatchedFunc)(TRawData, TRawData))
 {
 	this->binSize = binSize;
-	this->isMatchedFunc = isMatchedFunc;
+	this->adjacency = adj;
+    this->isMatchedFunc = isMatchedFunc;
 }
 
 template <typename TRawData>

@@ -37,12 +37,36 @@
 
 bool SVManager::findSV(void)
 {
-    findDeletion();
-    findInversion();
-    findDuplication(); // required : deletion
-    findTranslocation(); // required : duplication
-    findBreakend(); // the others
+    bool result;
+    RUN(result, "FIND INVERSIONS", findInversion());
+    RUN(result, "FIND DELETIONS", findDeletion());
+    RUN(result, "FIND DUPLICATIONS", findDuplication());
+    RUN(result, "FIND TRANSLOCATION", findTranslocation());
+    RUN(result, "FIND BREAKEND", findBreakend());
+
+    filterImpreciseDel();
     return true;
+}
+
+bool SVManager::filterImpreciseDel(void)
+{
+    double cutoff = this->bpManager->getDepthTH();
+    auto itDel = this->sv[SVTYPE_DELETION()].begin();
+    unsigned filtered = 0;
+    while( itDel != this->sv[SVTYPE_DELETION()].end() )
+    {
+        if (itDel->imprecise == true)
+        {
+            if ( itDel->status == VcfRecordEnhanced::STATUS::PASS && itDel->rd > cutoff)
+            {
+                ++filtered;
+                itDel->status = VcfRecordEnhanced::STATUS::FILTERED;
+            }
+        }
+        ++itDel;
+    }
+    printTimeMessage("Depth outliers: >" + std::to_string(cutoff));
+    printTimeMessage("Filtered imprecise deletions: " + std::to_string(filtered));
 }
 
 bool SVManager::writeVCF(void)
@@ -55,21 +79,53 @@ bool SVManager::writeVCF(void)
         int32_t nID = 1;
         for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
         {
-            // skip pseudo deletions
-            if (itSVType->first == SVTYPE_DELETION() && itSV->isPseudoDeletion == true)
+            // filtered result
+            if (this->opManager->getReportFilteredResult() == false && itSV->status != VcfRecordEnhanced::STATUS::PASS)
                 continue;
 
-            /* for 6 lines of representation of translocations
-            if (itSVType->first != SVTYPE_TRANSLOCATION())
-                itSV->id = itSVType->first + "_" + std::to_string(nID++);
-            */
+            // addtional informations
+            itSV->info  = "SC=" + std::to_string(itSV->sc) + ";";
+            itSV->info += "VT=" + std::to_string(itSV->vt) + ";";
+            itSV->info += "SE=" + std::to_string(itSV->se) + ";";
+            itSV->info += "PE=" + std::to_string(itSV->pe) + ";";
+            itSV->info += "CE=" + std::to_string(itSV->ce) + ";";
+            itSV->info += "RE=" + std::to_string(itSV->re) + ";";
+            itSV->info += "RD=" + std::to_string(itSV->rd) + ";";
+            itSV->info += "GC=" + std::to_string(itSV->gc) + ";";
+            itSV->info += "CP=" + std::to_string(itSV->cp) + ";";
+            if (itSV->targetPos != BreakpointEvidence::INVALID_POS)
+                itSV->info += "TARGETPOS=" + std::to_string(itSV->targetPos)  + ";";
+            if (itSV->endPos != BreakpointEvidence::INVALID_POS)
+            {
+                itSV->info += "SVLEN=";
+                if (itSVType->first == SVTYPE_DELETION())
+                    itSV->info += "-";
+                itSV->info += std::to_string(itSV->endPos - itSV->beginPos + 1)  + ";";
+            }
+            itSV->info += "SVTYPE=" + itSVType->first;
 
+            // TODOs
+            itSV->ref = "N"; // before SV
+            itSV->format = "GT";
+            itSV->qual = VcfRecord::MISSING_QUAL();
+
+               if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
+                itSV->filter = VcfRecordEnhanced::STATUS_PASS();
+            else if (itSV->status == VcfRecordEnhanced::STATUS::FILTERED)
+                itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
+            else if (itSV->status == VcfRecordEnhanced::STATUS::MERGED)
+                itSV->filter = VcfRecordEnhanced::STATUS_MERGED();
+            else
+                itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
+
+            appendValue(itSV->genotypeInfos, "./.");
+
+            // add
             vcfRecords.push_back(*itSV);
         }
     }
     // sort by chromosome & position
     std::sort(vcfRecords.begin(), vcfRecords.end(), less_than_vcf());
-
 
     // init.
     VcfHeader vcfHeader;
@@ -108,61 +164,15 @@ bool SVManager::writeVCF(void)
     return true;
 }
 
-bool SVManager::addTranslocation(int32_t nID, VcfRecordEnhanced& orgRecord)
+bool SVManager::addTranslocation(VcfRecordEnhanced& orgRecord)
 {
-    FinalBreakpointInfo* finalBreakpoint = this->bpManager->getFinalBreakpointInfo(orgRecord.breakpoint);
-    ReadSupportInfo* info = this->bpManager->getMergedBreakpoint()->getReadSupport(orgRecord.breakpoint);
-    TPosition svLen = orgRecord.endPos - orgRecord.beginPos + 1;
+    // copy
     VcfRecordEnhanced record = orgRecord;
 
-    std::string recordID = SVTYPE_TRANSLOCATION() + "_" + std::to_string(nID);
+    int nID = sv[SVTYPE_TRANSLOCATION()].size();
+    record.id = SVTYPE_TRANSLOCATION() + "_" + std::to_string(nID);
     record.alt = "<" + SVTYPE_TRANSLOCATION() + ">";
-    record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
-    record.info += "SE=" + std::to_string(orgRecord.se) + ";";
-    record.info += "PE=" + std::to_string(orgRecord.pe) + ";";
-    record.info += "CE=" + std::to_string(orgRecord.ce) + ";";
-    record.info += "RE=" + std::to_string(orgRecord.re) + ";";
-    record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-    record.info += "SVTYPE=" + SVTYPE_TRANSLOCATION() + ";";
-    record.info += "SVLEN=" + std::to_string(svLen);
-            
-    // TODOs (is this the best way to represent translocations?)
-    record.ref = "N"; // before SV
-    record.qual = VcfRecord::MISSING_QUAL();
-    record.filter = "PASS";       
-    record.format = "GT";
-    appendValue(record.genotypeInfos, "./.");
-
-    record.id = recordID;
-    record.beginPos = orgRecord.beginPos;
-    record.endPos = orgRecord.endPos;
-    record.targetPos = orgRecord.targetPos;
-    record.info += ";TARGETPOS=" + std::to_string(record.targetPos);
-
     sv[SVTYPE_TRANSLOCATION()].push_back(record);
-
-    /* 6 lines of representation. Legacy of Trappe 2015
-    record.id = recordID + "_1";
-    record.beginPos = orgRecord.beginPos - 1;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-    record.id = recordID + "_2";
-    record.beginPos = orgRecord.beginPos;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-
-    record.id = recordID + "_3";
-    record.beginPos = orgRecord.endPos - 1;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-    record.id = recordID + "_4";
-    record.beginPos = orgRecord.endPos;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-
-    record.id = recordID + "_5";
-    record.beginPos = orgRecord.targetPos - 1;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-    record.id = recordID + "_6";
-    record.beginPos = orgRecord.targetPos;
-    sv[SVTYPE_TRANSLOCATION()].push_back(record);
-    */
 }
 
 bool SVManager::findTranslocation(void)
@@ -185,31 +195,59 @@ bool SVManager::findTranslocation(void)
         // find matched duplication
         for (auto itDupComp = itDup + 1; itDupComp != this->sv[SVTYPE_DUPLICATION()].end(); ++itDupComp)
         {
-            // L,L or R,R
-            if (itDup->additionalInfo == itDupComp->additionalInfo)
-                continue;
-
-            // check matched duplications to register them to translocations
-            if ( (itDup->rID == itDupComp->rID) && \
-                  BreakpointCandidate::isAdjacent(itDup->beginPos, itDup->beginPos, itDupComp->targetPos, itDupComp->targetPos, adjTol) && \
-                  BreakpointCandidate::isAdjacent(itDupComp->endPos, itDupComp->endPos, itDup->targetPos, itDup->targetPos, adjTol))
+            if ( itDup->rID == itDupComp->rID)
             {
-                foundMatch = true;
-                record = *itDup;
-                record.se += itDup->se;
-                record.pe += itDup->pe;
-                record.ce += itDup->ce;
-                record.re += itDup->re;
-                addTranslocation(nID, record);
-                ++nID;
+                // check matched duplications to register them to translocations
+                if (  BreakpointCandidate::isAdjacent(itDup->beginPos, itDupComp->targetPos, adjTol) && \
+                      BreakpointCandidate::isAdjacent(itDupComp->endPos, itDup->targetPos, adjTol))
+                {
+                    // merge evidences
+                    //record.se = std::max(itDup->se, itDupComp->se);
+                    //record.pe = std::max(itDup->pe, itDupComp->pe);
+                    //record.ce = std::max(itDup->ce, itDupComp->ce);
+                    record.se = itDup->se + itDupComp->se;
+                    record.pe = itDup->pe + itDupComp->pe;
+                    record.ce = itDup->ce + itDupComp->ce;
+                    record.re = std::max(itDup->re, itDupComp->re);
+                    record.vt = std::max(itDup->vt, itDupComp->vt);
+                    if (itDup->status == VcfRecordEnhanced::STATUS::PASS || itDupComp->status == VcfRecordEnhanced::STATUS::PASS)                    
+                        record.status = VcfRecordEnhanced::STATUS::PASS;
 
-                dupRemoveList[itDup - this->sv[SVTYPE_DUPLICATION()].begin()] = true;
-                dupRemoveList[itDupComp - this->sv[SVTYPE_DUPLICATION()].begin()] = true;
+                    // marking to remove
+                    //dupRemoveList[itDup - this->sv[SVTYPE_DUPLICATION()].begin()] = true;
+                    //dupRemoveList[itDupComp - this->sv[SVTYPE_DUPLICATION()].begin()] = true;
+                    itDup->status = VcfRecordEnhanced::STATUS::MERGED;
+                    itDupComp->status = VcfRecordEnhanced::STATUS::MERGED;
+                    addTranslocation(record);
+
+                }
             }
         }
     }
 
-    // true duplications
+    // merge overlapped duplications
+    for (auto itTra = this->sv[SVTYPE_TRANSLOCATION()].begin(); itTra != this->sv[SVTYPE_TRANSLOCATION()].end(); ++itTra)
+    {
+        if (itTra->status == VcfRecordEnhanced::STATUS::PASS)
+        {
+            for (auto itDup = this->sv[SVTYPE_DUPLICATION()].begin(); itDup != this->sv[SVTYPE_DUPLICATION()].end(); ++itDup)
+            {
+                if (itTra->rID == itDup->rID && itDup->status != VcfRecordEnhanced::STATUS::MERGED)
+                {
+                    if (BreakpointCandidate::isOverlap(itTra->beginPos, itTra->endPos, itDup->beginPos, itDup->endPos))
+                    {
+                        itTra->se += itDup->se;
+                        itTra->pe += itDup->pe;
+                        itTra->ce += itDup->ce;
+                        //dupRemoveList[itDup - this->sv[SVTYPE_DUPLICATION()].begin()] = true;
+                        itDup->status = VcfRecordEnhanced::STATUS::MERGED;
+                    }
+                }
+            }
+        }
+    }
+
+    // remove marked duplications (they are translocations now)
     std::vector<VcfRecordEnhanced> dupAfter;
     for (auto i = 0; i < this->sv[SVTYPE_DUPLICATION()].size(); ++i)
         if (dupRemoveList[i] == false)
@@ -239,136 +277,222 @@ bool SVManager::findDuplication(void)
         if(bp->leftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE || bp->leftTemplateID != bp->rightTemplateID)
             found = false;
 
-        // not an inversion
+        // not an duplication
         if (bp->orientation != BreakpointEvidence::ORIENTATION::SWAPPED)
             found = false;
-        
-        int32_t svLen = finalBreakpoint->rightPosition - finalBreakpoint->leftPosition + 1;
-        if (svLen < this->opManager->getMinSVSize())
-            found = false;
 
+        // skip this
+        if (finalBreakpoint->filtered == true)
+            found = false;
+     
         if (found == true)
         {
-            // 'L' : left-side, 'R' : right-side, 'I' : imprecise
-            std::vector<std::pair<char, VcfRecordEnhanced> > svDel;
-            svDel.clear();
+            std::vector<TPosition> leftExactPositions, centerExactPositions, rightExactPositions;
+            std::vector<TPosition> leftImprecisePositions, centerImprecisePositions, rightImprecisePositions;
+            bool leftMatchFound = false, rightMatchFound = false;
+
+            // set initial positions
+            if (finalBreakpoint->imprecise == false)
+            {
+                leftExactPositions.push_back(finalBreakpoint->leftPosition);
+                rightExactPositions.push_back(finalBreakpoint->rightPosition);
+
+            }
+            else
+            {
+                leftImprecisePositions.push_back(finalBreakpoint->leftPosition);
+                rightImprecisePositions.push_back(finalBreakpoint->rightPosition);
+            }
+
+            // find matched deletions
+            std::vector<VcfRecordEnhanced*> vDel;
             auto itDel = this->sv[SVTYPE_DELETION()].begin();
             while( itDel != this->sv[SVTYPE_DELETION()].end() )
             {
-                bool matchFound = false;
+                bool matchFound = false;              
+                uint svLen = 0;
 
-                // left-side overlap
-                if ( itDel->rID == finalBreakpoint->leftTemplateID && \
-                     BreakpointCandidate::isAdjacent(itDel->beginPos, itDel->beginPos, finalBreakpoint->leftPosition, finalBreakpoint->leftPosition, adjTol))
+                if (itDel->rID == finalBreakpoint->leftTemplateID)
                 {
-                    if (itDel->endPos < finalBreakpoint->rightPosition)
+                    bool leftMatched = IS_ADJACENT(itDel->beginPos, finalBreakpoint->leftPosition, adjTol);
+                    bool rightMatched = IS_ADJACENT(itDel->endPos, finalBreakpoint->rightPosition, adjTol);
+
+                    if (leftMatched && rightMatched)
                     {
-                        svDel.push_back(std::make_pair('L', *itDel));
-                        matchFound = true;
+                        if (itDel->imprecise == false)
+                        {
+                            leftExactPositions.push_back(itDel->beginPos);
+                            rightExactPositions.push_back(itDel->endPos);
+                        }
+                        else
+                        {
+                            leftImprecisePositions.push_back(itDel->beginPos);
+                            rightImprecisePositions.push_back(itDel->endPos);
+                        }
+                        vDel.push_back(&(*itDel));
                     }
-                }
-
-                // right-side overlap
-                if ( itDel->rID == finalBreakpoint->rightTemplateID && \
-                     BreakpointCandidate::isAdjacent(itDel->endPos, itDel->endPos, finalBreakpoint->rightPosition, finalBreakpoint->rightPosition, adjTol))
-                {
-                    if (finalBreakpoint->leftPosition < itDel->beginPos)
+                    else if (leftMatched)
                     {
-                        svDel.push_back(std::make_pair('R', *itDel));
-                        matchFound = true;
+                        if (itDel->imprecise == false)
+                        {
+                            leftExactPositions.push_back(itDel->beginPos);
+                            centerImprecisePositions.push_back(itDel->endPos);
+                        }
+                        else
+                        {
+                            leftImprecisePositions.push_back(itDel->beginPos);
+                            centerImprecisePositions.push_back(itDel->endPos);
+                        }
+                        vDel.push_back(&(*itDel));
                     }
-                }
+                    else if (rightMatched)
+                    {
+                        if (itDel->imprecise == false)
+                        {
+                            centerExactPositions.push_back(itDel->beginPos);
+                            rightExactPositions.push_back(itDel->endPos);
+                        }
+                        else
+                        {
+                            centerImprecisePositions.push_back(itDel->beginPos);
+                            rightImprecisePositions.push_back(itDel->endPos);
+                        }
+                        vDel.push_back(&(*itDel));
+                    }
+                    /*
+                    else if (finalBreakpoint->imprecise == false && IS_OVERLAP(itDel->beginPos, itDel->endPos, finalBreakpoint->leftPosition, finalBreakpoint->rightPosition))
+                    {
+                        vDel.push_back(&(*itDel));
+                    }
+                    */
 
-                if (matchFound)
-                {
-                    itDel = this->sv[SVTYPE_DELETION()].erase(itDel);
-                    // break
+                    leftMatchFound = leftMatchFound || leftMatched;
+                    rightMatchFound = rightMatchFound || rightMatched;
                 }
-                else
-                    ++itDel;
+                ++itDel;
             }
 
-            // imprecise duplication
-            if (svDel.size() == 0)
+            // update supporting reads
+            VcfRecordEnhanced record;
+            record.se = info->splitReadSupport;
+            record.pe = info->pairedEndSupport;
+            record.ce = info->clippedReadSupport;
+            record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
+            record.rd = info->avgReadDepth;
+            record.vt = finalBreakpoint->vote;
+            record.gc = finalBreakpoint->gcContent;
+            record.cp = finalBreakpoint->sequenceComplexity;
+
+            if (finalBreakpoint->filtered == false)
             {
-                VcfRecordEnhanced tempSvDel;
-                tempSvDel.se = 0;
-                tempSvDel.pe = 0;
-                tempSvDel.ce = 0;
-                tempSvDel.re = 999999999.0;
-                svDel.push_back(std::make_pair('I', tempSvDel));
-            }
+                record.status = VcfRecordEnhanced::STATUS::PASS;
+                record.imprecise = finalBreakpoint->imprecise;
 
-            for (auto itSvDel = svDel.begin(); itSvDel != svDel.end(); ++itSvDel)
-            {
-                char dupType = itSvDel->first;
-                auto currentSvDel = itSvDel->second;
+                // merged to this duplication
+                for (auto it=vDel.begin(); it != vDel.end(); ++it)
+                    (*it)->status = VcfRecordEnhanced::STATUS::MERGED;
+            
+                // sorting
+                std::sort(leftExactPositions.begin(), leftExactPositions.end());
+                std::sort(leftImprecisePositions.begin(), leftImprecisePositions.end());
+                std::sort(centerExactPositions.begin(), centerExactPositions.end());
+                std::sort(centerImprecisePositions.begin(), centerImprecisePositions.end());
+                std::sort(rightExactPositions.begin(), rightExactPositions.end());
+                std::sort(rightImprecisePositions.begin(), rightImprecisePositions.end());
 
-                VcfRecordEnhanced record;
-                record.breakpoint = bp;
-                record.additionalInfo = dupType;
-                if (record.additionalInfo == 'L')
-                {
-                    record.beginPos = currentSvDel.endPos;
-                    record.endPos = finalBreakpoint->rightPosition;
-                    record.targetPos = finalBreakpoint->leftPosition;
-                }
-                else if (record.additionalInfo == 'R')
-                {
-                    record.beginPos = finalBreakpoint->leftPosition;
-                    record.endPos = currentSvDel.beginPos;
-                    record.targetPos = finalBreakpoint->rightPosition;
-                }
-                else // 'I'
-                {
-                    record.beginPos = finalBreakpoint->leftPosition;
-                    record.endPos = finalBreakpoint->rightPosition;
-                }
-                TPosition svLen = record.endPos - record.beginPos + 1;
-
-                record.rID = finalBreakpoint->leftTemplateID;
+                // fill records
                 record.id = SVTYPE_DUPLICATION() + "_" + std::to_string(nID++);
-                record.se = currentSvDel.se + info->splitReadSupport;
-                record.pe = currentSvDel.pe + info->pairedEndSupport;
-                record.ce = currentSvDel.ce + info->clippedReadSupport;
-                if (info->leftReadDepthSelected == true)
-                    record.re = info->leftReadDepthDiffScore;
-                else
-                    record.re = info->rightReadDepthDiffScore;
-                    
-                record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
-                record.info += "SE=" + std::to_string(record.se) + ";";
-                record.info += "PE=" + std::to_string(record.pe) + ";";
-                record.info += "CE=" + std::to_string(record.ce) + ";";
-                record.info += "RE=" + std::to_string(record.re) + ";";
-                record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-                record.info += "SVTYPE=" + SVTYPE_DUPLICATION() + ";";
-                record.info += "SVLEN=" + std::to_string(svLen);
+                record.rID = finalBreakpoint->leftTemplateID;
+                record.breakpoint = bp;               
 
-                if (record.additionalInfo == 'I')
+                // get positions
+                TPosition leftPos, rightPos;
+                if (leftExactPositions.size() > 0)
+                {
+                    leftPos = MID_ELEMENT(leftExactPositions);
+                }
+                else
+                {
+                    leftPos = MID_ELEMENT(leftImprecisePositions);
+                    record.imprecise = true;
+                }
+
+                if (rightExactPositions.size() > 0)
+                {
+                    rightPos = MID_ELEMENT(rightExactPositions);
+                }
+                else
+                {
+                    rightPos = MID_ELEMENT(rightImprecisePositions);
+                    record.imprecise = true;
+                }
+
+                // tandem duplication
+                if (centerExactPositions.size() == 0 && centerImprecisePositions.size() == 0)
                 {
                     record.alt = "<" + SVTYPE_DUPLICATION() + ":TANDEM>";
+                    record.beginPos = leftPos;
+                    record.endPos = rightPos;
+                    record.targetPos = BreakpointEvidence::INVALID_POS;
+
+                    // size check
+                    if ((record.endPos - record.beginPos + 1) >= this->opManager->getMinSVSize())
+                        sv[SVTYPE_DUPLICATION()].push_back(record);
                 }
                 else
                 {
                     record.alt = "<" + SVTYPE_DUPLICATION() + ">";
-                    record.info += ";TARGETPOS=" + std::to_string(record.targetPos);
+
+                    // center
+                    TPosition centerPos;
+                    if (centerExactPositions.size() > 0)
+                    {
+                        centerPos = MID_ELEMENT(centerExactPositions);
+                    }
+                    else
+                    {
+                        centerPos = MID_ELEMENT(centerImprecisePositions);
+                        record.imprecise = true;
+                    }
+
+                    if (leftMatchFound && rightMatchFound) // translocation
+                    {
+                        record.beginPos = leftPos;
+                        record.endPos = centerPos;
+                        record.targetPos = rightPos;
+                        addTranslocation(record);
+
+                        record.status = VcfRecordEnhanced::STATUS::MERGED;
+                        sv[SVTYPE_DUPLICATION()].push_back(record);                        
+                    }
+                    else if (leftMatchFound)
+                    {
+                        record.beginPos = centerPos;
+                        record.endPos = rightPos;
+                        record.targetPos = leftPos;
+
+                        // size check
+                        if ((record.endPos - record.beginPos + 1) >= this->opManager->getMinSVSize())
+                            sv[SVTYPE_DUPLICATION()].push_back(record);
+                    }
+                    else if (rightMatchFound)
+                    {
+                        record.beginPos = leftPos;
+                        record.endPos = centerPos;
+                        record.targetPos = rightPos;
+
+                        // size check
+                        if ((record.endPos - record.beginPos + 1) >= this->opManager->getMinSVSize())
+                            sv[SVTYPE_DUPLICATION()].push_back(record);
+                    }
                 }
 
-                // TODOs
-                record.ref = "N"; // before SV
-                record.qual = VcfRecord::MISSING_QUAL();
-                record.filter = "PASS";       
-                record.format = "GT";
-                appendValue(record.genotypeInfos, "./.");
-
-                sv[SVTYPE_DUPLICATION()].push_back(record);
             }
             itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
         }
         else
             ++itBreakpoint;
-    }
+    } // end while
 
     return true;
 }
@@ -387,32 +511,23 @@ bool SVManager::findInversion(void)
         FinalBreakpointInfo* finalBreakpoint = this->bpManager->getFinalBreakpointInfo(bp);
 
         bool found = true;
-        /* DEBUG
-        bool bFound = false;
-        for (auto itit = bp->suppReads.begin(); itit != bp->suppReads.end(); ++itit)
-        {
-            if (*itit == "simulated.19042/2")
-            {
-                std::cerr << "findInversion" << "\n";
-                BreakpointCandidate::printBreakpoint(bp);
-                std::cerr << bp->bFoundExactPosition << "\n";
-                bFound = true;
-            }
-        }
-        //*/
-
         // not in the same template
         if(bp->leftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE || bp->leftTemplateID != bp->rightTemplateID)
             found = false;
 
         // not an inversion
-        if (bp->orientation != BreakpointEvidence::ORIENTATION::INVERSED)
+        if (bp->orientation != BreakpointEvidence::ORIENTATION::INVERTED)
             found = false;
         
         // not an inversion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
 
+        // skip this
+        if (finalBreakpoint->filtered == true)
+            found = false;;
+
+        // size check
         int32_t svLen = finalBreakpoint->rightPosition - finalBreakpoint->leftPosition + 1;
         if (svLen < this->opManager->getMinSVSize())
             found = false;
@@ -420,33 +535,27 @@ bool SVManager::findInversion(void)
         if (found == true)
         {
             VcfRecordEnhanced record;
-            double re;
-            if (info->leftReadDepthSelected == true)
-                re = info->leftReadDepthDiffScore;
-            else
-                re = info->rightReadDepthDiffScore;
+
+            record.id = SVTYPE_INVERSION() + "_" + std::to_string(nID++);
+            record.alt = "<" + SVTYPE_INVERSION() + ">";
 
             record.rID = finalBreakpoint->leftTemplateID;
             record.beginPos = finalBreakpoint->leftPosition;
             record.endPos = finalBreakpoint->rightPosition;
-            record.id = SVTYPE_INVERSION() + "_" + std::to_string(nID++);
-            
-            record.alt = "<" + SVTYPE_INVERSION() + ">";
-            record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
-            record.info += "SE=" + std::to_string(info->splitReadSupport) + ";";
-            record.info += "PE=" + std::to_string(info->pairedEndSupport) + ";";
-            record.info += "CE=" + std::to_string(info->clippedReadSupport) + ";";
-            record.info += "RE=" + std::to_string(re) + ";";
-            record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-            record.info += "SVTYPE=" + SVTYPE_INVERSION() + ";";
-            record.info += "SVLEN=" + std::to_string(svLen);
+            record.targetPos = BreakpointEvidence::INVALID_POS;
 
-            // TODOs
-            record.ref = "N"; // before SV
-            record.qual = VcfRecord::MISSING_QUAL();
-            record.filter = "PASS";       
-            record.format = "GT";
-            appendValue(record.genotypeInfos, "./.");
+            record.se = info->splitReadSupport;
+            record.pe = info->pairedEndSupport;
+            record.ce = info->clippedReadSupport;
+            record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
+            record.rd = info->avgReadDepth;
+            record.vt = finalBreakpoint->vote;
+            record.gc = finalBreakpoint->gcContent;
+            record.cp = finalBreakpoint->sequenceComplexity;
+      
+            record.breakpoint = bp;
+            record.status = (finalBreakpoint->filtered) ? VcfRecordEnhanced::STATUS::FILTERED : VcfRecordEnhanced::STATUS::PASS;
+            record.imprecise = finalBreakpoint->imprecise;
 
             sv[SVTYPE_INVERSION()].push_back(record);
             itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
@@ -463,6 +572,7 @@ bool SVManager::findDeletion(void)
     auto itBreakpoint = candidateSet->begin();
     int32_t nID = 1;
 
+    TTemplateID rID_before = 0;
     while (itBreakpoint != candidateSet->end())
     {
         Breakpoint* bp = *itBreakpoint;
@@ -476,13 +586,14 @@ bool SVManager::findDeletion(void)
             found = false;
 
         // not a deletion
-        if (bp->orientation != BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED)
+        if (bp->orientation != BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
             found = false;
         
         // not a deletion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
 
+        // size check
         int32_t svLen = finalBreakpoint->rightPosition - finalBreakpoint->leftPosition + 1;
         if (svLen < this->opManager->getMinSVSize())
             found = false;
@@ -491,36 +602,26 @@ bool SVManager::findDeletion(void)
         {
             VcfRecordEnhanced record;
 
-            record.isPseudoDeletion = info->pseudoDeletion;
+            record.id = SVTYPE_DELETION() + "_" + std::to_string(nID++);
+            record.alt = "<" + SVTYPE_DELETION() + ">";
+
+            record.rID = finalBreakpoint->leftTemplateID;
             record.beginPos = finalBreakpoint->leftPosition;
             record.endPos = finalBreakpoint->rightPosition;
-            record.breakpoint = bp;
+            record.targetPos = BreakpointEvidence::INVALID_POS;
+
             record.se = info->splitReadSupport;
             record.pe = info->pairedEndSupport;
             record.ce = info->clippedReadSupport;
-            if (info->leftReadDepthSelected == true)
-                record.re = info->leftReadDepthDiffScore;
-            else
-                record.re = info->rightReadDepthDiffScore;
-           
-            record.rID = finalBreakpoint->leftTemplateID;
-            record.id = SVTYPE_DELETION() + "_" + std::to_string(nID++);
-            record.alt = "<" + SVTYPE_DELETION() + ">";
-            record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
-            record.info += "SE=" + std::to_string(record.se) + ";";
-            record.info += "PE=" + std::to_string(record.pe) + ";";
-            record.info += "CE=" + std::to_string(record.ce) + ";";
-            record.info += "RE=" + std::to_string(record.re) + ";";
-            record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-            record.info += "SVTYPE=" + SVTYPE_DELETION() + ";";
-            record.info += "SVLEN=-" + std::to_string(svLen);
+            record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
+            record.rd = info->avgReadDepth; 
+            record.vt = finalBreakpoint->vote;
+            record.gc = finalBreakpoint->gcContent;
+            record.cp = finalBreakpoint->sequenceComplexity;
 
-            // TODOs
-            record.ref = "N"; // before SV
-            record.qual = VcfRecord::MISSING_QUAL();
-            record.filter = "PASS";       
-            record.format = "GT";
-            appendValue(record.genotypeInfos, "./.");
+            record.breakpoint = bp;
+            record.status = (finalBreakpoint->filtered) ? VcfRecordEnhanced::STATUS::FILTERED : VcfRecordEnhanced::STATUS::PASS;
+            record.imprecise = finalBreakpoint->imprecise;
 
             sv[SVTYPE_DELETION()].push_back(record);
             itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
@@ -529,47 +630,8 @@ bool SVManager::findDeletion(void)
             ++itBreakpoint;
     }
 
-
-    /*
-    std::cout << this->alnManager->getRefName(finalBreakpoint->leftTemplateID) << "\t";
-    if (bp->leftReverseFlag == bp->rightReverseFlag)
-       std::cout << "=";
-    else
-        std::cout << "!=";
-    std::cout << "\t";
-
-    std::cout << finalBreakpoint->leftPosition + 1<< "\t";
-    std::cout << finalBreakpoint->rightPosition + 1<< "\t";
-
-    std::cout << finalBreakpoint->score << "\t";        
-    std::cout << info->splitReadSupport.size() << "\t";
-    std::cout << info->pairedEndSupport.size() << "\t";
-    std::cout << info->clippedReadSupport.size() << "\t";
-    std::cout << info->readDepth << "\t";
-    std::cout << info->readDepthDiffScore << "\t";
-
-    std::set<CharString>::iterator it;
-    for(it = bp->suppReads.begin(); it != (bp->suppReads.end()); ++it)
-        std::cout << *it << "|";
-    std::cout << "#\t";
-
-    for(it = info->splitReadSupport.begin(); it != (info->splitReadSupport.end()); ++it)
-        std::cout << *it << "|";
-    std::cout << "#\t";
-
-    for(it = info->pairedEndSupport.begin(); it != (info->pairedEndSupport.end()); ++it)
-        std::cout << *it << "|,";
-    std::cout << "#\t";
-
-    for(it = info->clippedReadSupport.begin(); it != (info->clippedReadSupport.end()); ++it)
-        std::cout << *it << "|,";
-    std::cout << "#\n";
-    */
-    
-
     return true;
 }
-
 
 bool SVManager::findBreakend(void)
 {
@@ -590,30 +652,29 @@ bool SVManager::findBreakend(void)
             continue;
         }
 
+        // skip this
+        if (finalBreakpoint->filtered == true)
+        {
+            ++itBreakpoint;
+            continue;         
+        }
+
         VcfRecordEnhanced record;
         record.breakpoint = bp;
+        record.targetPos = BreakpointEvidence::INVALID_POS;
+        record.endPos = BreakpointEvidence::INVALID_POS;
         record.se = info->splitReadSupport;
         record.pe = info->pairedEndSupport;
         record.ce = info->clippedReadSupport;
-        if (info->leftReadDepthSelected == true)
-            record.re = info->leftReadDepthDiffScore;
-        else
-            record.re = info->rightReadDepthDiffScore;
+        record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
+        record.rd = info->avgReadDepth;
+        record.gc = finalBreakpoint->gcContent;
+        record.cp = finalBreakpoint->sequenceComplexity;
 
-        record.info  = "RT=" + std::to_string(finalBreakpoint->score) + ";";
-        record.info += "SE=" + std::to_string(record.se) + ";";
-        record.info += "PE=" + std::to_string(record.pe) + ";";
-        record.info += "CE=" + std::to_string(record.ce) + ";";
-        record.info += "RE=" + std::to_string(record.re) + ";";
-        record.info += "RD=" + std::to_string(info->avgReadDepth)+ ";";
-        record.info += "SVTYPE=" + SVTYPE_BREAKEND() + ";";
+        record.status = (finalBreakpoint->filtered) ? VcfRecordEnhanced::STATUS::FILTERED : VcfRecordEnhanced::STATUS::PASS;
+        record.imprecise = finalBreakpoint->imprecise;
 
-        record.qual = VcfRecord::MISSING_QUAL();
-        record.filter = "PASS";     
-        record.format = "GT";
-        appendValue(record.genotypeInfos, "./.");
-
-        record.ref = "N"; // TODO : get the real nt.
+        // represented by 2 records
         std::string ntAtSV;
         if (finalBreakpoint->isLeftReverse == finalBreakpoint->isRightReverse)
         {
@@ -655,4 +716,143 @@ bool SVManager::findBreakend(void)
         ++nID;
         itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
     }
+}
+
+bool SVManager::orderSV(void)
+{
+    if (this->opManager->getUseRankAggregation())
+        return this->orderSVByRankAgg();
+    else
+        return this->orderSVByEvidenceSum();
+
+    return true;
+}
+
+bool SVManager::orderSVByEvidenceSum(void)
+{
+    // for each type and SVs
+    for (auto itSVType = this->sv.begin(); itSVType != this->sv.end(); ++itSVType)
+        for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
+            itSV->sc = itSV->se + itSV->pe + itSV->ce;
+}
+
+bool SVManager::orderSVByRankAgg(void)
+{
+    typedef std::pair<std::pair<double, double>, VcfRecordEnhanced*> TOrderingInfo;
+    typedef std::map<VcfRecordEnhanced*, std::vector<unsigned int> > TRankInfo;
+    std::vector< TOrderingInfo > vSe, vPe, vRe;
+    std::vector< std::pair<unsigned int, VcfRecordEnhanced*> > aggRank;
+
+    // for each type
+    for (auto itSVType = this->sv.begin(); itSVType != this->sv.end(); ++itSVType)
+    {
+        // init.
+        /*
+        vSe.clear();
+        vPe.clear();
+        vRe.clear();
+        aggRank.clear();
+        */
+
+        // fill list
+        for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
+        {
+            if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
+            {
+                vSe.push_back(std::make_pair(std::make_pair(itSV->se + itSV->ce, itSV->rd), &(*itSV)));
+                vPe.push_back(std::make_pair(std::make_pair(itSV->pe, itSV->rd), &(*itSV)));
+                vRe.push_back(std::make_pair(std::make_pair(itSV->re, itSV->rd), &(*itSV)));
+                
+                /*
+                double se = (double) (itSV->se + itSV->ce + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
+                double pe = (double) (itSV->pe + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
+                double re = (double) (itSV->re + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
+                vSe.push_back(std::make_pair(std::make_pair(se, se), &(*itSV)));
+                vPe.push_back(std::make_pair(std::make_pair(pe, pe), &(*itSV)));
+                vRe.push_back(std::make_pair(std::make_pair(re, re), &(*itSV)));
+                */
+            }
+            else
+            {
+                itSV->sc = -1;
+            }
+        }
+    }
+
+    {
+        // get individual rank.
+        auto sorter = [](TOrderingInfo l, TOrderingInfo r)->bool{ 
+        if (l.first.first != r.first.first)
+            return l.first.first > r.first.first;
+        else
+            return l.first.second < r.first.second;
+        };
+        std::sort(vSe.begin(), vSe.end(), sorter);
+        std::sort(vPe.begin(), vPe.end(), sorter);
+        std::sort(vRe.begin(), vRe.end(), sorter);
+
+        // aggregate ranks
+        TRankInfo mapRanks;
+        for (auto rank=0; rank < vSe.size(); ++rank)
+        {
+            if(mapRanks.find(vSe[rank].second) == mapRanks.end())
+                mapRanks.insert(std::make_pair(vSe[rank].second, std::vector<unsigned int>()));
+            mapRanks[vSe[rank].second].push_back(rank);
+
+            if (this->opManager->doPairedEndAnalysis())
+            {
+                if(mapRanks.find(vPe[rank].second) == mapRanks.end())
+                    mapRanks.insert(std::make_pair(vPe[rank].second, std::vector<unsigned int>()));
+                 mapRanks[vPe[rank].second].push_back(rank);
+            }
+
+            if (this->opManager->doReadDepthAnalysis())
+            {
+                if(mapRanks.find(vRe[rank].second) == mapRanks.end())
+                    mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));        
+                mapRanks[vRe[rank].second].push_back(rank);
+            }
+        }
+
+        // get median rank
+        auto it = mapRanks.begin();
+        while (it != mapRanks.end())
+        {
+            std::sort(it->second.begin(), it->second.end());
+            aggRank.push_back(std::make_pair(MID_ELEMENT(it->second), it->first));
+            ++it;
+        }
+
+        // final
+        std::sort(aggRank.begin(), aggRank.end(), [](auto &left, auto &right) {return left.first < right.first;} );
+        int correctedRank = -1, prevOriginalRank = -1, tieCount = 0;
+        for (unsigned i=0; i < aggRank.size(); ++i)
+        {
+            // tie
+            if (prevOriginalRank == aggRank[i].first)
+            {
+                ++tieCount;
+            }
+            else
+            {
+                correctedRank += tieCount + 1;
+                prevOriginalRank = aggRank[i].first;
+                tieCount = 0;
+            }
+            aggRank[i].second->sc = (1.0 - ( (double)correctedRank  /  (double) (aggRank.size() - 1))) * 100;            
+        }
+    }
+
+    return true;
+}
+
+uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = false) 
+{ 
+    int nCnt = 0;
+    for (auto itSV = sv[svType].begin(); itSV != sv[svType].end(); ++itSV)
+    {
+        if (countFilteredResult == true || itSV->status == VcfRecordEnhanced::STATUS::PASS)
+            ++nCnt;
+    }
+    return nCnt;
 }
