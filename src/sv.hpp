@@ -51,9 +51,20 @@ class VcfRecordEnhanced : public VcfRecord
         unsigned pe;
         unsigned ce;
         double re;
-        double pv;
-        bool isPseudoDeletion = false;
-};
+        double sc;
+        double rd;
+        double gc;
+        double cp;
+        char vt;
+
+        char status = STATUS::PASS;
+        bool imprecise = false; // do not have exact positions
+
+        enum STATUS {PASS=0, FILTERED=1, MERGED=2};
+        static std::string STATUS_PASS(void) { return "PASS"; }
+        static std::string STATUS_FILTERED(void) { return "FILTERED"; }
+        static std::string STATUS_MERGED(void) { return "MERGED"; }
+};  
 
 struct less_than_vcf
 {
@@ -83,8 +94,9 @@ class SVManager
         bool findBreakend(void);
         bool findDuplication(void);
         bool findTranslocation(void);
-        bool addTranslocation(int32_t, VcfRecordEnhanced&);
+        bool addTranslocation(VcfRecordEnhanced&);
         bool findTranslocation_old(void);
+        uint32_t getSVCount(std::string, bool);
 
     public :
         SVManager(BreakpointManager& bpm) 
@@ -95,12 +107,19 @@ class SVManager
         }
 
         bool findSV(void);
+        bool filterSV(void);
+        bool rescueSV(void);
+        bool orderSV(void);
+        bool orderSVByEvidenceSum(void);
+        bool orderSVByRankAgg(void);
+
         bool writeVCF(void);
-        uint32_t getDeletionCount(void) { return sv[SVTYPE_DELETION()].size(); }
-        uint32_t getInversionCount(void) { return sv[SVTYPE_INVERSION()].size(); }
-        uint32_t getDuplicationCount(void) { return sv[SVTYPE_DUPLICATION()].size(); }
-        uint32_t getTranslocationCount(void) { return sv[SVTYPE_TRANSLOCATION()].size(); }
-        uint32_t getBreakendCount(void) { return sv[SVTYPE_BREAKEND()].size() / 2; } // always pairs.
+        uint32_t getDeletionCount(void) { return getSVCount(SVTYPE_DELETION(), false); }
+        uint32_t getInversionCount(void) { return getSVCount(SVTYPE_INVERSION(), false);  }
+        uint32_t getDuplicationCount(void) { return getSVCount(SVTYPE_DUPLICATION(), false);  }
+        uint32_t getTranslocationCount(void) { return getSVCount(SVTYPE_TRANSLOCATION(), false);  }
+        uint32_t getBreakendCount(void) { return getSVCount(SVTYPE_BREAKEND(), false) / 2; } // always pairs.
+        bool filterImpreciseDel(void);
 
         static std::string SVTYPE_DELETION(void) { return "DEL"; }
         static std::string SVTYPE_INVERSION(void) { return "INV"; }

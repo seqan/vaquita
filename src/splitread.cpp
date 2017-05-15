@@ -35,73 +35,98 @@
 #include "splitread.hpp"
 #include <seqan/bam_io.h>
 
-bool SplitRead::analyzeRead(TReadName& readName)
+bool SplitRead::updateBreakpointByIndels(std::vector<BreakpointEvidence>& beList)
 {
     bool isNew;
+    for (unsigned i=0; i < beList.size(); ++i) // for each 
+    {
+        BreakpointEvidence& be = beList[i];
+        Breakpoint* bp = this->updateBreakpoint(be, true, isNew);
+
+        // every breakpoints based on split-read have exact positions.
+        bp->bFoundExactPosition = true; 
+    }
+}
+
+bool SplitRead::analyzeRead(TReadName& readName)
+{
     auto itRead = this->recordByRead.find(readName);
     if (itRead == this->recordByRead.end())
         return false;
 
-    // not confident
-    if (itRead->second.size() > 2)
+    if (itRead->second.size() > 2) // not confident (too-many segments)
         return false;
-
-    // extract information
-    TReadID readID = this->getAndUpdateCurrentReadID(); // this must be unique
+    
+    // get readID
+    TReadID readID = this->getNextReadID(); // this must be unique
+    
+    // extract information form local alignments
+    uint32_t minQuality = 999999;
     std::vector<AlignmentInfo> localAligns;
     TPosition querySize = 0;
-    uint32_t minQuality = 999999;
     for(auto it = itRead->second.begin(); it != itRead->second.end(); ++it) // for each segment
     {
         AlignmentInfo alnInfo;
         parseCIGAR(alnInfo, readID, *it, true, false, this->getOptionManager()->getMinSVSize(), 0);
         localAligns.push_back(alnInfo);
-        if (alnInfo.querySize > querySize)
-            querySize = alnInfo.querySize;
+
+        // min. quality segments
         if (it->mapQ < minQuality)
             minQuality = it->mapQ;
+
+        // size of the read
+        if (alnInfo.querySize > querySize)
+            querySize = alnInfo.querySize;
     }
 
+    // quailiy check
     if (minQuality < this->getOptionManager()->getMinMapQual())
         return false;
 
+    ///////////////////////////////////////////////////////////////////////////////////
+    // TODO: These addtional quailiy controls must be shown to users (provide options)
+    unsigned maxOverlapSize = 20;
+    ///////////////////////////////////////////////////////////////////////////////////
+
     // sort according to the start position in the query
     sort(localAligns.begin(), localAligns.end(), BreakpointCandidate::compareByQueryPos);
-
-    // check indels for the first segment
-    this->updateBreakpoint( FIRST_ELEMENT(localAligns).indelList, true );
+  
+    // check indels in the the first segment
+    this->updateBreakpointByIndels( FIRST_ELEMENT(localAligns).indelList );
 
     // for each alignment
-    unsigned maxOverlapSize = 20; // TODOs : provide option
     for(unsigned int i=1; i < localAligns.size(); ++i)
     {
         // check indels
-        this->updateBreakpoint(localAligns[i].indelList, true);
+        this->updateBreakpointByIndels(localAligns[i].indelList);
 
+        // check adjacency and overlaps of two consecutive segments
         SequenceSegment& rSeg1 = localAligns[i-1].refSegment;
         SequenceSegment& qSeg1 = localAligns[i-1].querySegment;
         SequenceSegment& rSeg2 = localAligns[i].refSegment;
         SequenceSegment& qSeg2 = localAligns[i].querySegment;
 
-        bool skipThis = true;
-        unsigned overlapSize = maxOverlapSize + 1;
-        if (qSeg1.isReverse == qSeg2.isReverse) // same strand
+        bool skipThis = true; // this segment is not useuful
+        unsigned overlapSize = maxOverlapSize + 1; // will be filtered by default. (must be rescued)
+
+        // same strand
+        if (qSeg1.isReverse == qSeg2.isReverse) 
         {
-            if (this->isAdjacent(qSeg1, qSeg2))
-                skipThis = false; // adjacent
-            else if (this->isOverlap(qSeg1, qSeg2))
+            if (this->isAdjacent(qSeg1, qSeg2)) // adjacent
+                skipThis = false; 
+            else if (this->isOverlap(qSeg1, qSeg2)) // overlap
                 overlapSize = abs(qSeg2.beginPos-qSeg1.endPos);
         }
-        else
+        else // different strand
         {
             // change coordinates according to the one strand
             SequenceSegment _qSeg2;
             _qSeg2.beginPos = querySize - qSeg2.endPos;
             _qSeg2.endPos = querySize - qSeg2.beginPos;
 
-            if (this->isAdjacent(qSeg1, _qSeg2))
-                skipThis = false; // adjacent
-            else if (this->isOverlap(qSeg1, _qSeg2))
+            if (this->isAdjacent(qSeg1, _qSeg2)) // adjacent
+                skipThis = false; 
+            else if (this->isOverlap(qSeg1, _qSeg2)) // overalp
             {
                 if (qSeg1.beginPos <= _qSeg2.beginPos)
                     overlapSize = abs(_qSeg2.beginPos - qSeg1.endPos);
@@ -109,9 +134,12 @@ bool SplitRead::analyzeRead(TReadName& readName)
                     overlapSize = abs(qSeg1.beginPos - _qSeg2.endPos);
             }
         }
+
+        // rescued by overlap
         if ( (skipThis == true) && overlapSize <= maxOverlapSize )
             skipThis = false;
 
+        // find breakpoint
         if (skipThis == false)
         {   
             SequenceSegment* leftRefSeg; 
@@ -129,7 +157,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
                     {
                         leftRefSeg = &rSeg1;
                         rightRefSeg = &rSeg2;
-                        be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED; // - ->
+                        be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE; // - ->
                         be.leftSegment.beginPos = leftRefSeg->endPos;
                         be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
                     }
@@ -142,21 +170,34 @@ bool SplitRead::analyzeRead(TReadName& readName)
                         be.rightSegment.beginPos = rightRefSeg->endPos - 1;
                     }
                 }
-                else
+                else // different strand
                 {
-                    be.orientation = BreakpointEvidence::ORIENTATION::INVERSED;
+                    be.orientation = BreakpointEvidence::ORIENTATION::INVERTED;
 
-                    if (rSeg1.beginPos < rSeg2.beginPos)
+                    bool orderKept, firstSegIsReverse;
+                    if (rSeg1.beginPos <= rSeg2.beginPos)
                     {
                         leftRefSeg = &rSeg1;
                         rightRefSeg = &rSeg2;
+                        orderKept = true;
+                    }
+                    else
+                    {
+                        leftRefSeg = &rSeg2;
+                        rightRefSeg = &rSeg1;
+                        orderKept = false;
+                    }
+                    firstSegIsReverse = leftRefSeg->isReverse;
 
-                        if (leftRefSeg->isReverse == false) // - |    <-|
+                    if (orderKept)
+                    {
+                        // <-| -|
+                        if (firstSegIsReverse)
                         {
                             be.leftSegment.beginPos = leftRefSeg->endPos;
                             be.rightSegment.beginPos = rightRefSeg->endPos - 1;
                         }
-                        else // |-    |->
+                        else // |-> |-
                         {
                             be.leftSegment.beginPos = leftRefSeg->beginPos;
                             be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
@@ -164,22 +205,20 @@ bool SplitRead::analyzeRead(TReadName& readName)
                     }
                     else
                     {
-                        leftRefSeg = &rSeg2;
-                        rightRefSeg = &rSeg1;
-
-                        if (leftRefSeg->isReverse == false) // |->    |-
-                        {
-                            be.leftSegment.beginPos = leftRefSeg->beginPos;
-                            be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
-                        }
-                        else // <-|   -|
+                        // -| <-|
+                        if (firstSegIsReverse)
                         {
                             be.leftSegment.beginPos = leftRefSeg->endPos;
                             be.rightSegment.beginPos = rightRefSeg->endPos - 1;
                         }
+                        else // |- |->
+                        {
+                            be.leftSegment.beginPos = leftRefSeg->beginPos;
+                            be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
+                        }   
                     }
                 }
-             
+
                 be.leftSegment.templateID = leftRefSeg->templateID;
                 be.leftSegment.isReverse = leftRefSeg->isReverse;
                 be.leftSegment.endPos = be.leftSegment.beginPos + 1;
@@ -210,7 +249,8 @@ bool SplitRead::analyzeRead(TReadName& readName)
                 be.rightSegment.endPos = be.rightSegment.beginPos + 1;
             }
 
-            Breakpoint *newBp = this->updateBreakpoint(be, isNew);
+            bool isNew;
+            Breakpoint *newBp = this->updateBreakpoint(be, true, isNew);
             newBp->bFoundExactPosition = true;                
         }
     }
@@ -231,7 +271,8 @@ bool SplitRead::analyzeCurrentChromosome()
         }
         else
         {
-            analyzeRead(const_cast<TReadName&>(itRead->first));
+            if (itRead->second.size() > 0)
+                analyzeRead(const_cast<TReadName&>(itRead->first));
 
             // release memory
             this->multChrmRead.erase( this->multChrmRead.find(const_cast<TReadName&>(itRead->first)) );
@@ -248,18 +289,42 @@ bool SplitRead::analyze()
     auto itRead = this->recordByRead.begin();
     while (itRead != this->recordByRead.end()) // for each reads
     {
-        analyzeRead(const_cast<TReadName&>(itRead->first));
-
-        // release memory
-        this->multChrmRead.erase( this->multChrmRead.find(const_cast<TReadName&>(itRead->first)) );
+        if (itRead->second.size() > 0)
+            analyzeRead(const_cast<TReadName&>(itRead->first));
         itRead = this->recordByRead.erase(itRead);
     }
+    this->multChrmRead.clear();
 
     return true;
 }
 
+void SplitRead::checkReadRecord(TReadName &readName, BamAlignmentRecord &record)
+{
+    TReadName nextPairName = readName;
+
+    if ( hasFlagFirst(record) )
+    {
+        readName += "/1";
+        nextPairName += "/2";
+    }
+    else // ( hasFlagLast(record) )
+    {
+        readName += "/2";        
+        nextPairName += "/1";
+    }    
+
+    // add read
+    if (this->recordByRead.find(readName) == this->recordByRead.end())
+    {
+        this->recordByRead[readName] = TBamRecords();
+        this->multChrmRead[readName] = false;
+    }
+}
+
 void SplitRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
 {
+    this->checkReadRecord(readName, record);
+
     // seq/qual/tag informations are removed after this.
     record.seq = "";
     record.qual = "";
@@ -287,11 +352,6 @@ void SplitRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
     }
 
     // add read
-    if (this->recordByRead.find(readName) == this->recordByRead.end())
-    {
-        this->recordByRead[readName] = TBamRecords();
-        this->multChrmRead[readName] = false;
-    }
     this->recordByRead[readName].push_back(std::move(record));
 }
 

@@ -32,6 +32,8 @@
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
 #include "readdepth.hpp"
+#include "misc.hpp"
+#include <cmath>
 
 void ReadDepth::parseReadRecord(CharString &id, BamAlignmentRecord &record)
 {  
@@ -40,7 +42,6 @@ void ReadDepth::parseReadRecord(CharString &id, BamAlignmentRecord &record)
                    readDepthInfo[record.rID].begin() + record.beginPos,
                    std::bind2nd(std::plus<TPosition>(), 1));
 }
-
 
 void ReadDepth::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
 {
@@ -64,12 +65,148 @@ void ReadDepth::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
     }
 }
 
+void ReadDepth::setRandomSeed(int seed)
+{
+    srand(seed);
+}
+
+void ReadDepth::getRandomPos(TTemplateID& t, TPosition &p)
+{
+    // select chromosome
+    t = rand() % readDepthInfo.size();
+    p = rand() % readDepthInfo[t].size();
+}
+
+bool ReadDepth::getRandomPosByTemplate(TTemplateID t, TPosition &p)
+{
+    if (t < readDepthInfo.size())
+    {
+        p = rand() % readDepthInfo[t].size();
+        return true;
+    }
+    else
+    {
+        p = BreakpointEvidence::INVALID_POS;
+        return false;
+    }
+}
+
+void ReadDepth::calculateReadDepthStat(std::map<TTemplateID, unsigned>& svCntByTemplate, unsigned totalCnt)
+{
+    // get RE distribution
+    std::vector<double> backgroundRE;
+    std::vector<double> backgroundDepth;
+    this->setRandomSeed(0);
+
+    for (auto itSVCntByTemp = svCntByTemplate.begin(); itSVCntByTemp != svCntByTemplate.end(); ++itSVCntByTemp)
+    {
+        TTemplateID t = itSVCntByTemp->first;
+
+        if (this->readDepthInfo.find(t) != this->readDepthInfo.end())
+        {
+            unsigned sampleCnt = ceil((double)this->getOptionManager()->getSamplingNum() * ((double) itSVCntByTemp->second / (double)totalCnt));
+            for(unsigned i=0; i < sampleCnt; ++i)
+            {
+                TPosition p;
+                double kl = 0.0, depth = 0.0;
+
+                // get kl and depth at random position
+                while (depth <= 0.0)
+                {
+                    if (this->getRandomPosByTemplate(t, p))
+                        this->getReadDepthDiffScore(kl, depth, t, p, this->getOptionManager()->getReadDepthWindowSize());
+                    else
+                        break;
+                }
+                backgroundRE.push_back(kl);
+                backgroundDepth.push_back(depth);
+            }
+        }
+    }
+    std::sort(backgroundRE.begin(), backgroundRE.end(), [](auto &left, auto &right) {return left < right;} );
+    std::sort(backgroundDepth.begin(), backgroundDepth.end(), [](auto &left, auto &right) {return left < right;} );
+
+    // Median depth
+    double medianDepth = MID_ELEMENT(backgroundDepth);
+    double q1 = backgroundDepth[backgroundDepth.size()*0.25];
+    double q3 = backgroundDepth[backgroundDepth.size()*0.75];
+    this->depthTH = q3 + (double)(q3-q1) * (double)this->getOptionManager()->getDepthOutlier();
+
+    this->setMedianDepth( medianDepth );
+    printTimeMessage("Depth median: " + std::to_string(medianDepth));
+    printTimeMessage("Depth Q1: " + std::to_string(q1));
+    printTimeMessage("Depth Q3: " + std::to_string(q3));
+    printTimeMessage("Depth IQR: " + std::to_string(q3-q1));
+    printTimeMessage("Depth threshold: " + std::to_string(this->depthTH));
+    /*
+    for (auto it = backgroundDepth.begin(); it != backgroundDepth.end(); ++it)
+    {
+        *it -= medianDepth;
+        if (*it < 0.0) *it *= -1.0;
+    }
+    std::sort(backgroundDepth.begin(), backgroundDepth.end(), [](auto &left, auto &right) {return left < right;} );
+    double madDepth = MID_ELEMENT(backgroundDepth);   
+    //printTimeMessage("Depth median absolute deviation: " + std::to_string(madDepth));
+    */
+    
+    // Read-depth evidence
+    double medianRE = 0.0, madRE = 0.0;
+    medianRE = MID_ELEMENT(backgroundRE);
+    q1 = backgroundRE[backgroundRE.size()*0.25];
+    q3 = backgroundRE[backgroundRE.size()*0.75];
+    this->reTH = q3 + (double)(q3-q1) * (double)this->getOptionManager()->getReOutlierCutoff();
+    printTimeMessage("RE median: " + std::to_string(medianRE));
+    printTimeMessage("RE Q1: " + std::to_string(q1));
+    printTimeMessage("RE Q3: " + std::to_string(q3));
+    printTimeMessage("RE IQR: " + std::to_string(q3-q1));
+    printTimeMessage("RE threshold : " + std::to_string(this->reTH));
+    /*
+    for (auto it = backgroundRE.begin(); it != backgroundRE.end(); ++it)
+    {
+        *it -= medianRE;
+        if (*it < 0.0) *it *= -1.0;
+    }
+    std::sort(backgroundRE.begin(), backgroundRE.end(), [](auto &left, auto &right) {return left < right;} );
+    madRE = MID_ELEMENT(backgroundRE);
+    //this->reTH = medianRE + madRE * this->getOptionManager()->getReOutlierCutoff();
+    //printTimeMessage("RE median absoulte deviation: " + std::to_string(madRE));
+    */
+
+
+    // KL figure
+    /*
+    std::cerr << "KL figure start\n";
+    for (auto it = backgroundRE.begin(); it != backgroundRE.end(); ++it )
+    {
+        std::cout << "RANDOM\t" << *it << std::endl;
+    }
+    std::ifstream file("tp.txt");
+    std::string sv_type;
+    int chrm, start, end;
+    while(file >> sv_type >> chrm >> start >> end)
+    {
+        double l_kl, r_kl, kl, l_depth, r_depth, depth;
+        int32_t breakpointSize = abs(end - start) + 1;
+        int32_t windowSize = this->getOptionManager()->getReadDepthWindowSize();
+        if (windowSize > breakpointSize)
+            windowSize = breakpointSize;
+
+        this->getReadDepthDiffScore(l_depth, r_depth, l_kl, r_kl, chrm, start, chrm, end, windowSize, windowSize);
+        kl = std::max(l_kl, r_kl);
+        depth = (l_depth + r_depth) / 2.0;
+        std::cout << sv_type << "\t" << start << "\t" << kl << "\t" << depth << "\n";
+    }
+    std::cerr << "KL figure end\n";
+    exit(1);
+    */
+}
+
 void ReadDepth::addUniformDepth(TTemplateID id, TPosition beginPos, TPosition size, unsigned depth)
 {  
     int endPos = beginPos + size;
-    if ( beginPos > readDepthInfo[id].size() )
+    if ( beginPos >= readDepthInfo[id].size() )
         beginPos = readDepthInfo[id].size() - 1;
-    if ( endPos > readDepthInfo[id].size() )
+    if ( endPos >= readDepthInfo[id].size() )
         endPos = readDepthInfo[id].size() - 1;
    
     std::transform(readDepthInfo[id].begin() + beginPos, \
@@ -77,6 +214,7 @@ void ReadDepth::addUniformDepth(TTemplateID id, TPosition beginPos, TPosition si
                    readDepthInfo[id].begin() + beginPos,
                    std::bind2nd(std::plus<TPosition>(), depth));
 
+    this->baseCount += (size * depth);
 }
 
 double ReadDepth::printDepth(TTemplateID templateID, TPosition position, TPosition windowSize)
@@ -88,34 +226,37 @@ double ReadDepth::printDepth(TTemplateID templateID, TPosition position, TPositi
     }
 }
 
+void ReadDepth::getReadDepthDiffScore(double& score, double& depth, TTemplateID t, TPosition p, TPosition windowSize)
+{
+    double leftDepthAvg, rightDepthAvg;
+
+    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t, p, windowSize, windowSize, BreakpointCandidate::SIDE::LEFT);
+    if (leftDepthAvg > rightDepthAvg)
+        score = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
+    else
+        score = getKLScore(rightDepthAvg, leftDepthAvg); // / rightDepthAvg;
+    depth = (leftDepthAvg + rightDepthAvg) / 2.0; // used to estimate the sample depth
+}
+
 void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOuterDepthAvg, double& leftScore, double& rightScore, TTemplateID t1, TPosition p1, TTemplateID t2, TPosition p2, TPosition windowSize, TPosition breakpointSize)
 {
-    double innerDepthAvg, outerDepthAvg, leftDepthAvg, rightDepthAvg;
+    double outerDepthAvg, leftDepthAvg, rightDepthAvg;
 
     // left
     getAvgReadDepth(leftDepthAvg, rightDepthAvg, t1, p1, windowSize, breakpointSize, BreakpointCandidate::SIDE::LEFT);
-
     leftOuterDepthAvg = leftDepthAvg;
-    outerDepthAvg = leftDepthAvg;
-    innerDepthAvg = rightDepthAvg;
     if (leftDepthAvg > rightDepthAvg)
-        leftScore = getKLScore(leftDepthAvg, rightDepthAvg);
+        leftScore = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
     else
-        leftScore = getKLScore(rightDepthAvg, leftDepthAvg);
+        leftScore = getKLScore(rightDepthAvg, leftDepthAvg); // / rightDepthAvg;
 
     // right
     getAvgReadDepth(leftDepthAvg, rightDepthAvg, t2, p2, windowSize, breakpointSize, BreakpointCandidate::SIDE::RIGHT);
     rightOuterDepthAvg = rightDepthAvg;
-    innerDepthAvg += leftDepthAvg;
-    outerDepthAvg += rightDepthAvg;
     if (leftDepthAvg > rightDepthAvg)
-        rightScore = getKLScore(leftDepthAvg, rightDepthAvg); // out -> in (del)
-    else 
-        rightScore = getKLScore(rightDepthAvg, leftDepthAvg); // in -> out (dup)
-
-    // avg
-    innerDepthAvg = innerDepthAvg / 2.0;
-    outerDepthAvg = outerDepthAvg / 2.0;
+        rightScore = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
+    else
+        rightScore = getKLScore(rightDepthAvg, leftDepthAvg); // / rightDepthAvg;
 }
 
 void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointCandidate::SIDE side)
@@ -173,7 +314,13 @@ double ReadDepth::getKLScore(double p0, double p1)
         double _p0 = p0 + PREVENT_DIV_BY_ZERO();
         double _p1 = p1 + PREVENT_DIV_BY_ZERO();
         KLTable[p0][p1] = _p0 - _p1 + (_p1 * log(_p1/_p0));
+        if (KLTable[p0][p1] < 0.0)
+            KLTable[p0][p1] = 0.0;
     }
-
     return KLTable[p0][p1];
+}
+
+double ReadDepth::getPoissonP(unsigned k, double l)
+{
+    return (pow(l,k) * exp(-l)) / std::tgamma(k+1);
 }

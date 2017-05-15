@@ -41,12 +41,14 @@
 
 struct ClippedSequenceSegment
 {
+    TTemplateID matchedRightTemplateID;
+    TTemplateID matchedLeftTemplateID;
     Breakpoint* matchedBp;
     SequenceSegment sequenceSegment;
     SequenceSegment querySegment;
     bool isReverseComplemented;
+    BreakpointEvidence::ORIENTATION  orientation;
 };
-
 
 struct ClippedSequenceSegmentCompareByPosition {
     bool operator()(const ClippedSequenceSegment &lhs, const ClippedSequenceSegment &rhs) {
@@ -83,16 +85,19 @@ class ClippedRead : public BreakpointCandidate
 
         FaiIndex faiIndex;
         std::map<Breakpoint*, CandidateRegionPair> candidateRegion;
+        std::map<TTemplateID, TPosition> templateSize;
        
-    public:       
+    public:
+        void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void setOptionManager(OptionManager* op);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);
-       
-        void getReferenceSequence(CharString& seq, CharString chr, int32_t start, int32_t end);
-        void getReferenceSequence(CharString& seq, unsigned templateID, int32_t start, int32_t end);
+        void setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION, const BreakpointCandidate::SIDE, Breakpoint&, TTemplateID&, TPosition&, TPosition&);
 
-        bool searchPairRegion(TFoundPosition&, Breakpoint*, int32_t&, CharString&, SIDE, bool, bool);
-        bool searchTwilightZone(TFoundPosition&, Breakpoint*, int32_t&, CharString&, SIDE, bool);
+        void getReferenceSequence(CharString& seq, CharString chr, TPosition start, TPosition end);
+        void getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end);
+
+        bool searchPairRegion(TFoundPosition&, Breakpoint*, int32_t&, CharString&, SIDE, bool, bool, BreakpointEvidence::ORIENTATION );
+        bool searchTwilightZone(TFoundPosition&, Breakpoint*, int32_t&, CharString&, SIDE, bool, BreakpointEvidence::ORIENTATION );
         bool alignByMyersBitVector(TFoundPosition&, CharString&, CharString&, int32_t&);
         bool alignByLocal(TFoundPosition&, CharString&, CharString&, int32_t&);
         bool onlineSearchBySegment(TFoundPosition&, CharString&, CharString&, int32_t&);

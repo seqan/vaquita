@@ -37,7 +37,12 @@ void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, Breakpoin
 {
     TPosition temp;
 
-    if (toward == BreakpointCandidate::SIDE::RIGHT)
+
+    if (toward == BreakpointCandidate::SIDE::BOTH)
+    {
+        BreakpointCandidate::setPositionWithAdj( min, max, this->getOptionManager()->getPairedEndSearchSize() );        
+    }
+    else if (toward == BreakpointCandidate::SIDE::RIGHT)
     {
         temp = min;
         BreakpointCandidate::setPositionWithAdj( min, temp, this->getOptionManager()->getMinSVSize() );
@@ -65,7 +70,8 @@ bool PairedEndRead::analyze(void)
         TPosition leftPos, rightPos, leftMin, leftMax, rightMin, rightMax;
 
         // get candidate region
-        if (bp->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED)
+        if (bp->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE || \
+            bp->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_SMALL)
         {
             leftPos = bp->maxLeftPos;
             rightPos = bp->minRightPos;
@@ -74,9 +80,9 @@ bool PairedEndRead::analyze(void)
             rightMin = rightPos;
             rightMax = rightPos;
             this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::RIGHT);
-            this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::LEFT);            
+            this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::LEFT);
         }
-        else if (bp->orientation == BreakpointEvidence::ORIENTATION::INVERSED)
+        else if (bp->orientation == BreakpointEvidence::ORIENTATION::INVERTED)
         {
             if (bp->leftReverseFlag) // <-- <--
             {
@@ -86,8 +92,8 @@ bool PairedEndRead::analyze(void)
                 leftMax = leftPos;
                 rightMin = rightPos;
                 rightMax = rightPos;
-                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::LEFT);
-                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::LEFT);
+                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::BOTH);
+                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::BOTH);
             }
             else // --> -->
             {
@@ -97,8 +103,8 @@ bool PairedEndRead::analyze(void)
                 leftMax = leftPos;
                 rightMin = rightPos;
                 rightMax = rightPos;
-                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::RIGHT);
-                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::RIGHT);
+                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::BOTH);
+                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::BOTH);
            }
         }
         else if (bp->orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
@@ -165,6 +171,11 @@ bool PairedEndRead::analyze(void)
     return true;
 }
 
+bool PairedEndRead::isNew(TReadName &readName)
+{
+    return (this->pairInfo.find(readName) == this->pairInfo.end());
+}
+
 void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
 {
     // can't specify the positions (should be filtered in record reading step)
@@ -173,16 +184,14 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
 
     bool isNew = (this->pairInfo.find(readName) == this->pairInfo.end());
     BreakpointEvidence& be = this->pairInfo[readName]; // [start, end)
+    unsigned readSize = getAlignmentLengthInRef(record);
 
-    // initialization
     if (isNew)
     {
         be.leftSegment.templateID = BreakpointEvidence::NOVEL_TEMPLATE;
         be.rightSegment.templateID = BreakpointEvidence::NOVEL_TEMPLATE;
     }
 
-    // update information
-    unsigned readSize = getAlignmentLengthInRef(record);
     if (record.tLen >= 0)
     {
         be.leftSegment.beginPos = record.beginPos;
@@ -202,7 +211,7 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
     if ( be.leftSegment.templateID != BreakpointEvidence::NOVEL_TEMPLATE && \
          be.rightSegment.templateID != BreakpointEvidence::NOVEL_TEMPLATE )
     {
-        be.suppRead = this->getAndUpdateCurrentReadID(); // this must be unique
+        be.suppRead = this->getNextReadID(); // this must be unique
         if (be.leftSegment.templateID == be.rightSegment.templateID)
         {
             if (be.leftSegment.isReverse != be.rightSegment.isReverse)
@@ -210,11 +219,17 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
                 if (be.leftSegment.isReverse)
                     be.orientation = BreakpointEvidence::ORIENTATION::SWAPPED; // <-- -->
                 else
-                    be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED; // --> <--
+                {
+                    // --> <--
+                    if (abs(record.tLen) > this->getMaxAbInsSize())
+                        be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE;
+                    else
+                        be.orientation = BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_SMALL;
+                }
             }
             else
             {
-                be.orientation = BreakpointEvidence::ORIENTATION::INVERSED; // --> --> or <-- <--
+                be.orientation = BreakpointEvidence::ORIENTATION::INVERTED; // --> --> or <-- <--
             }
         }
         else
@@ -222,7 +237,7 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
             be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
         }
 
-        Breakpoint* bp = this->updateBreakpoint(be, isNew); // add
+        Breakpoint* bp = this->updateBreakpoint(be, true, isNew); // add (false: check one side)
         this->pairInfo.erase(readName); // erase
     }
 }

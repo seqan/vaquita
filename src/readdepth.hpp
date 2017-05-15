@@ -46,19 +46,38 @@ class ReadDepth : public BreakpointCandidate
     private:
 		std::map<TTemplateID, std::vector<uint8_t> > readDepthInfo;
 		TKLTable KLTable;
+        double medianReadDepth = 0.0;
+        double depthTH = 0.0;
+        double reTH = MaxValue<double>::VALUE;;
+        double depthLowerBound = 0.0;
+        double depthUpperBound = MaxValue<double>::VALUE;;
+        uint32_t baseCount = 0;
+        uint32_t refSize = 0;
 
     public:
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void parseReadRecord(CharString&, BamAlignmentRecord&);
         void addUniformDepth(TTemplateID, TPosition, TPosition, unsigned);
+        void calculateReadDepthStat(std::map<TTemplateID, unsigned>&, unsigned);
+        void setMedianDepth(double d) { this->medianReadDepth = d; }
 
+        double getDepthTH(void) { return this->depthTH; }
+        double getPoissonP(unsigned k, double l);
     	double getKLScore(double a, double b);
 		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointCandidate::SIDE);
-		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);
+		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);        
+        void getReadDepthDiffScore(double& score, double& depth, TTemplateID t, TPosition p, TPosition windowSize);
+        void setRandomSeed(int seed);
+        void getRandomPos(TTemplateID& t, TPosition &p);
+        bool getRandomPosByTemplate(TTemplateID t, TPosition &p);
+        double getDepthLowerBound() { return depthLowerBound; }
+        double getDepthUpperBound() { return depthUpperBound; }
+        double getMedianDepth() { return medianReadDepth; }
+        double getReTH() { return reTH; }
+        unsigned getRefSize(TTemplateID rid) { return readDepthInfo[rid].size(); }
 
         double printDepth(TTemplateID templateID, TPosition position, TPosition windowSize);
 
-        static double PREVENT_DIV_BY_ZERO(void) { return 0.00000000001; }
         static bool isReadMatched(SequenceSegment* a, SequenceSegment* b) { return true; }
 };
 #endif // APP_READ_DEPTH_H_

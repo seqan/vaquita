@@ -45,7 +45,8 @@ class AlignmentManager
 {
     private :
         static unsigned const PRINT_READ_NUMBER_PER = 100000000;
-        static unsigned const INS_SIZE_ESTIMATION_SAMPLE_SIZE = 10000;
+        //static unsigned const PRINT_READ_NUMBER_PER = 10000000;
+        static unsigned const INS_SIZE_ESTIMATION_SAMPLE_SIZE = 100000;
         double K = 1.4826;
 
         // option
@@ -77,8 +78,10 @@ class AlignmentManager
         int32_t clippedReadCount;
 
         void calcInsertSize();
-        //bool isAbnormalInsertion(unsigned ins) { return ( (ins < minAbInsSize) || (ins > maxAbInsSize)); }
-        bool isAbnormalInsertion(unsigned ins) { return (ins > maxAbInsSize); }
+        //bool isAbnormalInsertion(unsigned ins) { return ( (ins < this->minAbInsSize) || (ins > this->maxAbInsSize) ); }
+        bool isAbnormalInsertion(unsigned ins) { return (ins > this->maxAbInsSize); }
+        double getMaxAbInsSize(void) { return this->maxAbInsSize; }
+        double getMinAbInsSize(void) { return this->minAbInsSize; }        
         static bool pairCompare(const TInsBamRecordPair& e1, const TInsBamRecordPair& e2) { return e1.first < e2.first; }
 
     public :
