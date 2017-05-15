@@ -98,9 +98,9 @@ bool AlignmentManager::load(void)
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
 
-            //if (record.rID > 0)
+            //if (record.rID > 46)
             //    break;
-
+            
             // discards low quality reads, secondary mappings
             //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
             if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
@@ -319,7 +319,7 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
     }
     if (!hasAlignments)
         return;
-    
+
     // search
     //int32_t clippedReadEditDistance = optionManager->getClippedReadEditDistance();
     BamAlignmentRecord record;

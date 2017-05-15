@@ -115,11 +115,13 @@ void OptionManager::init()
     
     addSection(*this, "Read-depth evidence");
     addOption(*this, ArgParseOption("re", "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * re)} get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "reThreshold", "0.0");
+    setDefaultValue(*this, "reThreshold", "1.0");
     addOption(*this, ArgParseOption("rs", "samplingNum", "Number of random sample to estimate the background distribution(Q3, IQR, ..) of read-depth evidence.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "samplingNum", "100000");
     addOption(*this, ArgParseOption("rw", "readDepthWindowSize", "Window size to caclulate average read-depth around breakpoints.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "readDepthWindowSize", "20");
+    addOption(*this, ArgParseOption("", "use-re-for-bs", "Use RE for balanced SVs(eg. inverison)."));
+    setDefaultValue(*this, "use-re-for-bs", "false");
     addOption(*this, ArgParseOption("", "no-re", "Do not use read-depth evidence."));
     setDefaultValue(*this, "no-re", "false");
 
@@ -165,6 +167,7 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
     getOptionValue(this->readDepthWindowSize, *this, "readDepthWindowSize");
     getOptionValue(this->reThreshold, *this, "reThreshold");
     getOptionValue(this->samplingNum, *this, "samplingNum");
+    this->useREforBalancedSV = isSet(*this, "use-re-for-bs");
 
     return true;
 }
@@ -202,5 +205,6 @@ void OptionManager::printUserInput(void)
     printMessage("- reThreshold: " + std::to_string(this->reThreshold));
     printMessage("- samplingNum: " + std::to_string(this->samplingNum));
     printMessage("- readDepthWindowSize: " + std::to_string(this->readDepthWindowSize));
+    printMessage("- useREforBalancedSV: " + std::to_string(this->useREforBalancedSV));
     printMessage("==============================");
 }

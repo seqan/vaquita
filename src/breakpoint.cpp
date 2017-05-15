@@ -165,7 +165,7 @@ bool BreakpointManager::mergeClippedRead(void)
 
         // 1. check pre-defined regions
         if ( rightMatched.size() > 0 || leftMatched.size() > 0)
-        {              
+        {
             this->clippedBreakpoints.getConsensusSequence(clipSeq, currentBp);
             bestMatchScore = -(this->optionManager->getClippedSeqErrorRate() * length(clipSeq));
 
@@ -235,9 +235,10 @@ bool BreakpointManager::mergeClippedRead(void)
                                                                    true, \
                                                                    BreakpointEvidence::ORIENTATION::INVERTED);
                     }
-                }        
+                }
             }
         }
+
         // 2. search for twilight zone  (potential deletion)
         if (foundPositions.size() == 0)
         {
@@ -335,7 +336,6 @@ bool BreakpointManager::mergeClippedRead(void)
                     }
                 }
             }
-
             // found inversion by swapping
             if (foundInvBySwap)
                 isLeftClip = !isLeftClip;
@@ -356,7 +356,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
     for (auto itFound = foundPositions.begin(); itFound != foundPositions.end(); ++itFound)
     {
         Breakpoint* matchedBp = itFound->matchedBp;
-
+  
         // copy
         Breakpoint* newBp = new Breakpoint;
         BreakpointCandidate::copyBreakpoint(*newBp, *clippedBp);
@@ -371,10 +371,10 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 newPos = itFound->sequenceSegment.endPos - 1;
 
                 // fill information
-                if (matchedBp->rightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
+                if (itFound->matchedRightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
                     newBp->rightTemplateID = newBp->rightTemplateID; // by twilight zone
                 else
-                    newBp->rightTemplateID = matchedBp->rightTemplateID; // by paired-end region
+                    newBp->rightTemplateID = itFound->matchedRightTemplateID; // by paired-end region
 
                 // update positions
                 newBp->rightPos.clear();
@@ -395,10 +395,10 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 newPos = itFound->sequenceSegment.beginPos;
 
                 // fill information
-                if (matchedBp->leftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
+                if (itFound->matchedLeftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
                     newBp->leftTemplateID = newBp->rightTemplateID; // by twilight zone
                 else
-                    newBp->leftTemplateID = matchedBp->leftTemplateID; // by paired-end region
+                    newBp->leftTemplateID = itFound->matchedLeftTemplateID; // by paired-end region
 
                 // update positions
                 newBp->leftPos.clear();
@@ -434,10 +434,10 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 if (newPos != BreakpointEvidence::INVALID_POS)
                 {
                     // fill information
-                    if (matchedBp->leftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
+                    if (itFound->matchedLeftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
                         newBp->leftTemplateID = newBp->rightTemplateID; // by twilight zone
                     else
-                        newBp->leftTemplateID = matchedBp->leftTemplateID; // by paired-end region
+                        newBp->leftTemplateID = itFound->matchedLeftTemplateID; // by paired-end region
 
                     // update positions
                     newBp->leftPos.clear();
@@ -470,10 +470,10 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 if (newPos != BreakpointEvidence::INVALID_POS)
                 {
                     // fill information
-                    if (matchedBp->rightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
+                    if (itFound->matchedRightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
                         newBp->rightTemplateID = newBp->leftTemplateID; // by twilight zone
                     else
-                        newBp->rightTemplateID = matchedBp->rightTemplateID; // by paired-end region
+                        newBp->rightTemplateID = itFound->matchedRightTemplateID; // by paired-end region
 
                     // update positions
                     newBp->rightPos.clear();
@@ -510,8 +510,8 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
             if (isNewBp == true)
             {
                 // based on read-pairs
-                if (matchedBp->leftTemplateID != BreakpointEvidence::NOVEL_TEMPLATE && \
-                    matchedBp->rightTemplateID != BreakpointEvidence::NOVEL_TEMPLATE)
+                if (itFound->matchedLeftTemplateID != BreakpointEvidence::NOVEL_TEMPLATE && \
+                    itFound->matchedRightTemplateID != BreakpointEvidence::NOVEL_TEMPLATE)
                 {
                     this->pairedEndBreakpoints.setBreakpointUsed(matchedBp, true);
                     newBp->suppReads += matchedBp->suppReads;
@@ -868,6 +868,7 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         // Evidence sum
         double score = (info->splitReadSupport + info->pairedEndSupport + info->clippedReadSupport);
         finalBreakpointInfo->score = score;
+        finalBreakpointInfo->filtered = true;
 
         // Voting
         unsigned vote = 0;
@@ -887,16 +888,25 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         }
         finalBreakpointInfo->vote = vote;
 
-        //std::cerr << score << "\t" << cutoff << "\t" << minVote << "\t" << vote << "\n";
-        if (score >= (double)cutoff || vote >= minVote)
-        {
+        // by evidence sum
+        if (score >= (double)cutoff)
           finalBreakpointInfo->filtered = false;
-        }
-        else
+
+        // by voting
+        if ( (*itBreakpoint)->orientation != BreakpointEvidence::INVERTED )
         {
-          ++filteredBreakpointCount;
-          finalBreakpointInfo->filtered = true;
+          if (vote >= minVote)
+            finalBreakpointInfo->filtered = false;
         }
+        else if( (*itBreakpoint)->orientation == BreakpointEvidence::INVERTED)
+        {
+          if (this->optionManager->getUseREforBalancedSV() && vote >= minVote)
+            finalBreakpointInfo->filtered = false;         
+        }
+
+        if (finalBreakpointInfo->filtered == true)
+          ++filteredBreakpointCount;
+
         ++itBreakpoint;
     }
     this->mergedBreakpoints.setFilteredBreakpointCount(filteredBreakpointCount);

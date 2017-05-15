@@ -41,6 +41,8 @@
 
 struct ClippedSequenceSegment
 {
+    TTemplateID matchedRightTemplateID;
+    TTemplateID matchedLeftTemplateID;
     Breakpoint* matchedBp;
     SequenceSegment sequenceSegment;
     SequenceSegment querySegment;

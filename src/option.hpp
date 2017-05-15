@@ -85,6 +85,7 @@ class OptionManager : public ArgumentParser
         int32_t samplingNum;
         int32_t readDepthWindowSize;
         bool doReadDepth;
+        bool useREforBalancedSV;
 
     public :
     	OptionManager()
@@ -135,5 +136,6 @@ class OptionManager : public ArgumentParser
         int32_t getReadDepthWindowSize(void) { return readDepthWindowSize; }
         double getReOutlierCutoff(void) { return reThreshold; }
         int32_t getSamplingNum(void) { return samplingNum; }
+        bool getUseREforBalancedSV(void) { return useREforBalancedSV; }
 };
 #endif // APP_OPTION_H_

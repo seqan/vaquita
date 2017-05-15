@@ -166,9 +166,11 @@ bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
                 itNewFound->sequenceSegment.templateID = refID;
                 itNewFound->sequenceSegment.beginPos += refBeginPosInGenome;
                 itNewFound->sequenceSegment.endPos += refBeginPosInGenome;
-                itNewFound->matchedBp = bp;
                 itNewFound->isReverseComplemented = useReverseComplement;
                 itNewFound->orientation = orientation;
+                itNewFound->matchedBp = bp;
+                itNewFound->matchedRightTemplateID = bp->rightTemplateID;
+                itNewFound->matchedLeftTemplateID = bp->leftTemplateID;
 
                 // check duplicates
                 bool duplicated = false;
@@ -247,9 +249,11 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
                 itNewFound->sequenceSegment.templateID = refID;
                 itNewFound->sequenceSegment.beginPos += refBeginPosInGenome;
                 itNewFound->sequenceSegment.endPos += refBeginPosInGenome;
-                itNewFound->matchedBp = bp;
                 itNewFound->isReverseComplemented = useReverseComplement;
                 itNewFound->orientation = orientation;
+                itNewFound->matchedBp = bp;
+                itNewFound->matchedRightTemplateID = bp->rightTemplateID;
+                itNewFound->matchedLeftTemplateID = bp->leftTemplateID;
 
                 // check duplicates
                 bool duplicated = false;
