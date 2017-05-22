@@ -71,9 +71,9 @@ void OptionManager::init()
     addOption(*this, ArgParseOption("a", "adjTol", "Positional adjacency in nucleotide resolution.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "adjTol", "50");
     addOption(*this, ArgParseOption("c", "cutoff", "Mininum number of supporting read-pairs and split-reads", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "cutoff", "2");
+    setDefaultValue(*this, "cutoff", "4");
     addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "minVote", "-1");
+    setDefaultValue(*this, "minVote", "3");
     addOption(*this, ArgParseOption("", "no-rank-aggregation", "Do not use rank-aggregation for prioritization."));
     setDefaultValue(*this, "no-rank-aggregation", "false");
     addOption(*this, ArgParseOption("", "report-filtered", "Report filtered result"));
