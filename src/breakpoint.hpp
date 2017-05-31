@@ -67,11 +67,11 @@ class BreakpointManager
     private :
         OptionManager*      optionManager;
         AlignmentManager*   alignmentManager;
-        SplitRead           splitReadBreakpoints;
-        PairedEndRead       pairedEndBreakpoints;
-        ClippedRead         clippedBreakpoints;
-        ReadDepth           readDepthBreakpoints;
-        MergedCandidate     mergedBreakpoints;
+        SplitRead*          splitReadBreakpoints;
+        PairedEndRead*      pairedEndBreakpoints;
+        ClippedRead*        clippedBreakpoints;
+        ReadDepth*          readDepthBreakpoints;
+        MergedCandidate*    mergedBreakpoints;
 
         std::map<Breakpoint*, FinalBreakpointInfo> finalBreakpoints;
         double averageReadDepth = 0.0;
@@ -89,33 +89,32 @@ class BreakpointManager
         bool calculateReadDepth();
         bool addImpreciseBreakpoints();
         void addNewPositionsByClippedSequence(TFoundPosition&, Breakpoint*, bool isLeftClip);
-       
+
     public :
     	BreakpointManager(AlignmentManager& aln) { init(aln); }
-        ~BreakpointManager() {};
+        ~BreakpointManager();
 
     	void init(AlignmentManager&);
         bool merge(void);
         bool find(void);
         bool applyFilter(void);
         bool applyPrioritization(void);
-        bool applyNormalization(void);
         bool rescueByCombinedEvidence(void);
         void writeBreakpoint(void);
         bool getSequenceFeature(void);
         void getNTCount(CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
 
-        AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
-        OptionManager* getOptionManager(void) { return this->optionManager; }
-        BreakpointCandidate* getSplitRead(void) { return &this->splitReadBreakpoints; }
-        BreakpointCandidate* getPairedEndRead(void) { return &this->pairedEndBreakpoints; }
-        BreakpointCandidate* getClippedRead(void) { return &this->clippedBreakpoints; }
-        BreakpointCandidate* getReadDepth(void) { return &this->readDepthBreakpoints; }
-        MergedCandidate* getMergedBreakpoint(void) { return &this->mergedBreakpoints; }
-        FinalBreakpointInfo* getFinalBreakpointInfo(Breakpoint* bp) { return &this->finalBreakpoints[bp]; }
-        double getReTH(void) { return readDepthBreakpoints.getReTH(); }
-        double getDepthTH(void) { return readDepthBreakpoints.getDepthTH(); }
-        double getDepthMedian(void) { return readDepthBreakpoints.getMedianDepth(); }
+        inline AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
+        inline OptionManager* getOptionManager(void) { return this->optionManager; }
+        inline SplitRead* getSplitRead(void) { return this->splitReadBreakpoints; }
+        inline PairedEndRead* getPairedEndRead(void) { return this->pairedEndBreakpoints; }
+        inline ClippedRead* getClippedRead(void) { return this->clippedBreakpoints; }
+        inline ReadDepth* getReadDepth(void) { return this->readDepthBreakpoints; }
+        inline MergedCandidate* getMergedBreakpoint(void) { return this->mergedBreakpoints; }
+        inline FinalBreakpointInfo* getFinalBreakpointInfo(Breakpoint* bp) { return &this->finalBreakpoints[bp]; }
+        double getReTH(void) { return readDepthBreakpoints->getReTH(); }
+        double getDepthTH(void) { return readDepthBreakpoints->getDepthTH(); }
+        double getDepthMedian(void) { return readDepthBreakpoints->getMedianDepth(); }
 };
 
 #endif // APP_BREAKPOINT_H_

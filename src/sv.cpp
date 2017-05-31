@@ -314,8 +314,8 @@ bool SVManager::findDuplication(void)
 
                 if (itDel->rID == finalBreakpoint->leftTemplateID)
                 {
-                    bool leftMatched = IS_ADJACENT(itDel->beginPos, finalBreakpoint->leftPosition, adjTol);
-                    bool rightMatched = IS_ADJACENT(itDel->endPos, finalBreakpoint->rightPosition, adjTol);
+                    bool leftMatched = BreakpointCandidate::isAdjacent(itDel->beginPos, finalBreakpoint->leftPosition, adjTol);
+                    bool rightMatched = BreakpointCandidate::isAdjacent(itDel->endPos, finalBreakpoint->rightPosition, adjTol);
 
                     if (leftMatched && rightMatched)
                     {

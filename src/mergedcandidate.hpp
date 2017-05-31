@@ -58,13 +58,15 @@ class MergedCandidate : public BreakpointCandidate
         unsigned filteredBreakpointCount = 0;
 
     public:
-        void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
+        MergedCandidate(OptionManager* o):BreakpointCandidate(o) {};
 
-        
+        void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
+       
         void setFilteredBreakpointCount(unsigned c) { filteredBreakpointCount = c; }
         void setReadSupport(Breakpoint*, ReadSupportInfo&);
         void addReadSupport(Breakpoint*, ReadSupportInfo&);
-        
+        ReadSupportInfo* initReadSupport(Breakpoint*);
+
         ReadSupportInfo* getReadSupport(Breakpoint*);
         unsigned getFilteredBreakpointCount(void) { return filteredBreakpointCount; }
 };

@@ -55,6 +55,8 @@ class ReadDepth : public BreakpointCandidate
         uint32_t refSize = 0;
 
     public:
+        ReadDepth(OptionManager* o):BreakpointCandidate(o) {};
+
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void parseReadRecord(CharString&, BamAlignmentRecord&);
         void addUniformDepth(TTemplateID, TPosition, TPosition, unsigned);
@@ -64,7 +66,7 @@ class ReadDepth : public BreakpointCandidate
         double getDepthTH(void) { return this->depthTH; }
         double getPoissonP(unsigned k, double l);
     	double getKLScore(double a, double b);
-		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointCandidate::SIDE);
+		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointEvidence::SIDE);
 		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);        
         void getReadDepthDiffScore(double& score, double& depth, TTemplateID t, TPosition p, TPosition windowSize);
         void setRandomSeed(int seed);

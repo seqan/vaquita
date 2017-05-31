@@ -112,18 +112,18 @@ class IntervalIndex
 		bool remove(TPosition, TPosition, TRawData);
 		bool find(TRawDataSet&, const TPosition, const TPosition, const TRawData);
 		
+        void getPositionWithAdj(TPosition &left, TPosition &right);
 		static inline bool isValidInterval(TPosition, TPosition);
-		inline bool isOverlap(TPosition, TPosition, TPosition, TPosition);
+		static inline bool isOverlap(TPosition, TPosition, TPosition, TPosition);
+        static inline bool isAdjacent(TPosition, TPosition, TPosition);
         inline bool isAdjacent(TPosition, TPosition, TPosition, TPosition);
+        inline bool isAdjacent(TPosition, TPosition);
 };
 
 template <typename TRawData>
 bool IntervalIndex<TRawData>::isOverlap(TPosition beginPos1, TPosition endPos1, TPosition beginPos2, TPosition endPos2)
 {
-    return ((beginPos1 <= beginPos2 and beginPos2 < endPos1) or \
-           (beginPos2 <= beginPos1 and beginPos1 < endPos2) or \
-           (beginPos1 <= beginPos2 and endPos2 < endPos1) or \
-           (beginPos2 <= beginPos1 and endPos1 < endPos2));
+    return (beginPos1 <= endPos2 && beginPos2 <= endPos1);
 }
 
 template <typename TRawData>
@@ -132,8 +132,17 @@ bool IntervalIndex<TRawData>::isAdjacent(TPosition beginPos1, TPosition endPos1,
     return ( (endPos1 <= beginPos2 and ((beginPos2 - endPos1) <= this->adjacency)) or \
              (endPos2 <= beginPos1 and ((beginPos1 - endPos2) <= this->adjacency)) );
 }
+template <typename TRawData>
+bool IntervalIndex<TRawData>::isAdjacent(TPosition p1, TPosition p2, TPosition tol)
+{
+    return (((p2 >= p1) && (p2 - p1) <= tol) || ((p1 > p2) && (p1 - p2) <= tol));
+}
 
-
+template <typename TRawData>
+bool IntervalIndex<TRawData>::isAdjacent(TPosition p1, TPosition p2)
+{
+    return (((p2 >= p1) && (p2 - p1) <= this->adjacency) || ((p1 > p2) && (p1 - p2) <= this->adjacency));
+}
 
 template <typename TRawData>
 inline bool IntervalIndex<TRawData>::isValidInterval(TPosition begin, TPosition end)
@@ -176,7 +185,6 @@ bool IntervalIndex<TRawData>::remove(const TPosition begin, const TPosition end,
 	minBin = this->getBin(begin);
 	maxBin = this->getBin(end);
 
-	bool removed = false;
 	for (TBin bin = minBin; bin <= maxBin; ++bin)
     {
         if (this->index.find(bin) == this->index.end())
@@ -196,16 +204,33 @@ bool IntervalIndex<TRawData>::remove(const TPosition begin, const TPosition end,
 }
 
 template <typename TRawData>
+void IntervalIndex<TRawData>::getPositionWithAdj(TPosition &left, TPosition &right)
+{
+    if (left < this->adjacency)
+        left = 0;
+    else
+        left -= this->adjacency;
+
+    if ( right > IntervalIndex::INVALID_POS - this->adjacency)
+        right = IntervalIndex::INVALID_POS;
+    else
+        right += this->adjacency;
+}
+
+template <typename TRawData>
 bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, const TPosition begin, const TPosition end, const TRawData data)
 {
 	if (isValidInterval(begin, end) == false)
 		return false;
-    
-	TBin minBin, maxBin;
-	minBin = this->getBin(begin) - 1;
-	maxBin = this->getBin(end) + 1;
+  
+    TPosition beginWithAdj = begin;
+    TPosition endWithAdj = end;
+    this->getPositionWithAdj(beginWithAdj, endWithAdj);
 
-    outVector.clear();
+	TBin minBin, maxBin;
+	minBin = this->getBin(beginWithAdj);
+	maxBin = this->getBin(endWithAdj);
+
 	for (TBin bin = minBin; bin <= maxBin; ++bin)
     {
         if (this->index.find(bin) == this->index.end())
@@ -214,17 +239,20 @@ bool IntervalIndex<TRawData>::find(TRawDataSet& outVector, const TPosition begin
 		auto it = this->index[bin]->begin();
       	while (it != this->index[bin]->end())
        	{
-       		if ( isOverlap(begin, end, it->first.first, it->first.second) && (this->isMatchedFunc)(data, it->second) == true)
-       			outVector.insert(it->second);
+       		if ( isOverlap(beginWithAdj, endWithAdj, it->first.first, it->first.second) && (this->isMatchedFunc)(data, it->second) == true)
+            {
+                outVector.insert(it->second);
+            }
+            /*
             else if ( isAdjacent(begin, end, it->first.first, it->first.second) && (this->isMatchedFunc)(data, it->second) == true)
                 outVector.insert(it->second);
+            */
             ++it;
         }
     }
 
     return true;
 }
-
 
 template <typename TRawData>
 IntervalIndex<TRawData>::IntervalIndex(TPosition binSize, TPosition adj, bool (*isMatchedFunc)(TRawData, TRawData))

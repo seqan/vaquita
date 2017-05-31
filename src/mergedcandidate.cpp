@@ -49,11 +49,18 @@ void MergedCandidate::doAdditionalJobAfterMerge(Breakpoint* destBp, Breakpoint* 
     destReadInfo->rightReadDepth = srcReadInfo->rightReadDepth;
 }
 
-void MergedCandidate::setReadSupport(Breakpoint* bp, ReadSupportInfo& i)
+ReadSupportInfo* MergedCandidate::initReadSupport(Breakpoint* bp)
 {
     this->readSupportInfo[bp].splitReadSupport = 0;
     this->readSupportInfo[bp].pairedEndSupport = 0;
     this->readSupportInfo[bp].clippedReadSupport = 0;
+
+    return getReadSupport(bp);
+}
+
+void MergedCandidate::setReadSupport(Breakpoint* bp, ReadSupportInfo& i)
+{
+    initReadSupport(bp);
     addReadSupport(bp, i);
 }
 

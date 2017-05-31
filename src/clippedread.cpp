@@ -59,13 +59,41 @@ void ClippedRead::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
             this->templateSize[rID] = templateLength;
         }
     }
+
+    if ( this->getOptionManager()->doClippedReadAnalysis() == true )
+    {
+        // load fasta file
+        CharString pathToFaFile = this->getOptionManager()->getReferenceGenome();
+        CharString pathToFaiFile = pathToFaFile;
+        append(pathToFaiFile, ".fai");
+        if (!open(this->faiIndex, toCString(pathToFaFile)))
+        {
+            printTimeMessage("ClippedRead : Can't load '" + std::string(toCString(pathToFaiFile)) + "', try to build it.");
+            if (!build(this->faiIndex, toCString(pathToFaFile)))
+            {
+                printMessage("[ERROR] ClippedRead : Can't build FASTA index with '" + std::string(toCString(pathToFaFile)) + \
+                             "'. Please check 'referenceGenome' option with '--help'.");
+                exit(1);
+            }
+            else
+            {
+                if (!save(this->faiIndex, toCString(pathToFaiFile)))
+                {
+                    printMessage("ClippedRead : Can't save FASTA index to '" + std::string(toCString(pathToFaiFile)) + "'.");
+                    exit(1);
+                }
+
+                printTimeMessage("ClippedRead : FASTA index was built.");
+            }
+        }
+    }
 }
 
-void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION orientation, const BreakpointCandidate::SIDE side, Breakpoint &bp, TTemplateID &rID, TPosition &begin, TPosition &end)
+void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION orientation, const BreakpointEvidence::SIDE side, Breakpoint &bp, TTemplateID &rID, TPosition &begin, TPosition &end)
 {
     if (orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
     {
-        if (side == BreakpointCandidate::SIDE::RIGHT)
+        if (side == BreakpointEvidence::SIDE::RIGHT)
         {
             begin = bp.minRightPos;
             end = bp.maxRightPos;
@@ -80,7 +108,7 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
     }
     else if (orientation == BreakpointEvidence::ORIENTATION::INVERTED)
     {
-        if (side == BreakpointCandidate::SIDE::RIGHT)
+        if (side == BreakpointEvidence::SIDE::RIGHT)
         {
             begin = bp.minRightPos;
             end = bp.maxRightPos;
@@ -95,7 +123,7 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
     }
     else if (orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
     {
-        if (side == BreakpointCandidate::SIDE::RIGHT)
+        if (side == BreakpointEvidence::SIDE::RIGHT)
         {
             begin = bp.minRightPos;
             end = bp.maxRightPos;
@@ -120,7 +148,7 @@ bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
                                     Breakpoint* bp, \
                                     int32_t &bestScore, \
                                     CharString& query, \
-                                    SIDE searchSide, \
+                                    BreakpointEvidence::SIDE searchSide, \
                                     bool useLocalAlignment, \
                                     bool useReverseComplement, \
                                     BreakpointEvidence::ORIENTATION orientation)
@@ -196,17 +224,16 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
                                       Breakpoint* bp, \
                                       int32_t& bestScore, \
                                       CharString& query, \
-                                      SIDE searchSide, \
+                                      BreakpointEvidence::SIDE searchSide, \
                                       bool useReverseComplement, \
                                       BreakpointEvidence::ORIENTATION orientation)
 {
     // get search region
     int32_t minSVSize = this->getOptionManager()->getMinSVSize();
-    //int32_t searchSize = length(query) + (this->getInsSD() * this->getOptionManager()->getAbInsParam());
     int32_t searchSize = this->getMaxAbInsSize();
     TTemplateID refID;
     TPosition refBeginPosInGenome, refEndPosInGenome;
-    if (searchSide == SIDE::RIGHT)
+    if (searchSide == BreakpointEvidence::SIDE::RIGHT)
     {
         // TODO : duplication? (search for both-side)
         refBeginPosInGenome = bp->maxLeftPos + minSVSize;
@@ -436,55 +463,7 @@ bool ClippedRead::alignByMyersBitVector(TFoundPosition& foundPositions, CharStri
         }
     }
 
-    return (foundPositions.size() > 0);
-
-    // calc-edit distance
-
-    /*
-    foundPositions.clear();
-    if (currentScore >= bestScore)
-    {
-        if (currentScore > bestScore)
-            bestScore = currentScore;
-
-        ClippedSequenceSegment s;
-        s.sequenceSegment.beginPos = clippedBeginPosition(row(align, 0));
-        s.sequenceSegment.endPos = clippedEndPosition(row(align, 0)) - 1;
-        foundPositions.push_back(s);
-    }
-    */    
-}
-
-void ClippedRead::setOptionManager(OptionManager* op)
-{
-    BreakpointCandidate::setOptionManager(op);
-    if ( this->getOptionManager()->doClippedReadAnalysis() == true )
-    {
-        // load fasta file
-        CharString pathToFaFile = this->getOptionManager()->getReferenceGenome();
-        CharString pathToFaiFile = pathToFaFile;
-        append(pathToFaiFile, ".fai");
-        if (!open(this->faiIndex, toCString(pathToFaFile)))
-        {
-            printTimeMessage("ClippedRead : Can't load '" + std::string(toCString(pathToFaiFile)) + "', try to build it.");
-            if (!build(this->faiIndex, toCString(pathToFaFile)))
-            {
-                printMessage("[ERROR] ClippedRead : Can't build FASTA index with '" + std::string(toCString(pathToFaFile)) + \
-                             "'. Please check 'referenceGenome' option with '--help'.");
-                exit(1);
-            }
-            else
-            {
-                if (!save(this->faiIndex, toCString(pathToFaiFile)))
-                {
-                    printMessage("ClippedRead : Can't save FASTA index to '" + std::string(toCString(pathToFaiFile)) + "'.");
-                    exit(1);
-                }
-
-                printTimeMessage("ClippedRead : FASTA index was built.");
-            }
-        }
-    }
+    return (foundPositions.size() > 0); 
 }
 
 void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end)
@@ -492,6 +471,7 @@ void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, 
     clear(seq);
     if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || start < 0 || end >= templateSize[templateID])
         return;
+
     try {
         readRegion(seq, this->faiIndex, templateID, start, end);    
     }
@@ -529,9 +509,9 @@ void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &recor
     while (itClip != alnInfo.clippedList.end())
     {
         BreakpointEvidence& be = *(itClip++);
-        be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
+        be.orientation = BreakpointEvidence::ORIENTATION::CLIPPED;
             
-        Breakpoint* bp = this->updateBreakpoint(be, true, isNew);
+        Breakpoint* bp = this->updateBreakpoint(be, isNew);
         if (isNew == true)
         {
             bp->bFoundExactPosition = false;

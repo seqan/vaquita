@@ -71,9 +71,9 @@ void OptionManager::init()
     addOption(*this, ArgParseOption("a", "adjTol", "Positional adjacency in nucleotide resolution.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "adjTol", "50");
     addOption(*this, ArgParseOption("c", "cutoff", "Mininum number of supporting read-pairs and split-reads", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "cutoff", "2");
+    setDefaultValue(*this, "cutoff", "4");
     addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "minVote", "-1");
+    setDefaultValue(*this, "minVote", "3");
     addOption(*this, ArgParseOption("", "no-rank-aggregation", "Do not use rank-aggregation for prioritization."));
     setDefaultValue(*this, "no-rank-aggregation", "false");
     addOption(*this, ArgParseOption("", "report-filtered", "Report filtered result"));
@@ -108,8 +108,8 @@ void OptionManager::init()
     setDefaultValue(*this, "clippedSeqErrorRate", "0.1");
     addOption(*this, ArgParseOption("cg", "referenceGenome", "Genome sequence file(.fa).", ArgParseOption::INPUT_FILE));
     setValidValues(*this, "referenceGenome", ".fa");
-    addOption(*this, ArgParseOption("", "use-assembly", "Use consitency based sequence assembly(deprecated)."));
-    setDefaultValue(*this, "use-assembly", "false");
+    //addOption(*this, ArgParseOption("", "use-assembly", "Use consitency based sequence assembly(deprecated)."));
+    //setDefaultValue(*this, "use-assembly", "false");
     addOption(*this, ArgParseOption("", "no-ce", "Do not use soft-clipped evidence."));
     setDefaultValue(*this, "no-ce", "false");
     
@@ -161,7 +161,8 @@ bool OptionManager::parseCommandLine(int argc, char const ** argv)
     getOptionValue(this->minClippedSeqSize, *this, "minClippedSeqSize");
     getOptionValue(this->referenceGenome, *this, "referenceGenome");
     getOptionValue(this->clippedSeqErrorRate, *this, "clippedSeqErrorRate");
-    this->useAssembly = isSet(*this, "use-assembly");
+    //this->useAssembly = isSet(*this, "use-assembly");
+    this->useAssembly = false;
 
     this->doReadDepth = !isSet(*this, "no-re");
     getOptionValue(this->readDepthWindowSize, *this, "readDepthWindowSize");
@@ -200,7 +201,7 @@ void OptionManager::printUserInput(void)
     printMessage("- minClippedSeqSize: " + std::to_string(this->minClippedSeqSize));
     printMessage("- referenceGenome: " + std::string(toCString(this->referenceGenome)));
     printMessage("- clippedSeqErrorRate: " + std::to_string(this->clippedSeqErrorRate));
-    printMessage("- use-assembly: " + std::to_string(this->useAssembly));
+    //printMessage("- use-assembly: " + std::to_string(this->useAssembly));
     printMessage("[Read-depth options]");
     printMessage("- reThreshold: " + std::to_string(this->reThreshold));
     printMessage("- samplingNum: " + std::to_string(this->samplingNum));

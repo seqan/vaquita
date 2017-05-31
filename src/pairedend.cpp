@@ -33,16 +33,15 @@
 // ==========================================================================
 #include "pairedend.hpp"
 
-void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, BreakpointCandidate::SIDE toward)
+void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, BreakpointEvidence::SIDE toward)
 {
     TPosition temp;
 
-
-    if (toward == BreakpointCandidate::SIDE::BOTH)
+    if (toward == BreakpointEvidence::SIDE::BOTH)
     {
         BreakpointCandidate::setPositionWithAdj( min, max, this->getOptionManager()->getPairedEndSearchSize() );        
     }
-    else if (toward == BreakpointCandidate::SIDE::RIGHT)
+    else if (toward == BreakpointEvidence::SIDE::RIGHT)
     {
         temp = min;
         BreakpointCandidate::setPositionWithAdj( min, temp, this->getOptionManager()->getMinSVSize() );
@@ -79,8 +78,8 @@ bool PairedEndRead::analyze(void)
             leftMax = leftPos;
             rightMin = rightPos;
             rightMax = rightPos;
-            this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::RIGHT);
-            this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::LEFT);
+            this->getCandidateRegion(leftMin, leftMax, BreakpointEvidence::SIDE::RIGHT);
+            this->getCandidateRegion(rightMin, rightMax, BreakpointEvidence::SIDE::LEFT);
         }
         else if (bp->orientation == BreakpointEvidence::ORIENTATION::INVERTED)
         {
@@ -92,8 +91,8 @@ bool PairedEndRead::analyze(void)
                 leftMax = leftPos;
                 rightMin = rightPos;
                 rightMax = rightPos;
-                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::BOTH);
-                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::BOTH);
+                this->getCandidateRegion(leftMin, leftMax, BreakpointEvidence::SIDE::BOTH);
+                this->getCandidateRegion(rightMin, rightMax, BreakpointEvidence::SIDE::BOTH);
             }
             else // --> -->
             {
@@ -103,8 +102,8 @@ bool PairedEndRead::analyze(void)
                 leftMax = leftPos;
                 rightMin = rightPos;
                 rightMax = rightPos;
-                this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::BOTH);
-                this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::BOTH);
+                this->getCandidateRegion(leftMin, leftMax, BreakpointEvidence::SIDE::BOTH);
+                this->getCandidateRegion(rightMin, rightMax, BreakpointEvidence::SIDE::BOTH);
            }
         }
         else if (bp->orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
@@ -115,8 +114,8 @@ bool PairedEndRead::analyze(void)
             leftMax = leftPos;
             rightMin = rightPos;
             rightMax = rightPos;
-            this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::LEFT);
-            this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::RIGHT);
+            this->getCandidateRegion(leftMin, leftMax, BreakpointEvidence::SIDE::LEFT);
+            this->getCandidateRegion(rightMin, rightMax, BreakpointEvidence::SIDE::RIGHT);
         }
         else // BreakpointEvidence::ORIENTATION::NOT_DECIDED
         {
@@ -126,8 +125,8 @@ bool PairedEndRead::analyze(void)
             leftMax = leftPos;
             rightMin = rightPos;
             rightMax = rightPos;
-            this->getCandidateRegion(leftMin, leftMax, BreakpointCandidate::SIDE::RIGHT);
-            this->getCandidateRegion(rightMin, rightMax, BreakpointCandidate::SIDE::LEFT);
+            this->getCandidateRegion(leftMin, leftMax, BreakpointEvidence::SIDE::RIGHT);
+            this->getCandidateRegion(rightMin, rightMax, BreakpointEvidence::SIDE::LEFT);
         }
 
         // they are in the same strand (used for NOT_DECIDED cases)
@@ -237,7 +236,7 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
             be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
         }
 
-        Breakpoint* bp = this->updateBreakpoint(be, true, isNew); // add (false: check one side)
+        Breakpoint* bp = this->updateBreakpoint(be, isNew);
         this->pairInfo.erase(readName); // erase
     }
 }

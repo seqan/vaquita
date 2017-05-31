@@ -94,8 +94,8 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                             be.rightSegment.endPos = be.rightSegment.beginPos + 1;
                             be.rightSegment.isReverse = alnInfo.refSegment.isReverse;
                             be.sequence = prefix(record.seq, record.cigar[i].count);
-                            //be.orientation = BreakpointEvidence::ORIENTATION::LEFT_CLIP;
-                            be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
+                            be.orientation = BreakpointEvidence::ORIENTATION::CLIPPED;
+                            //be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
                             alnInfo.clippedList.push_back(be);
                         }
                         
@@ -112,8 +112,8 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                             be.rightSegment.beginPos = BreakpointEvidence::INVALID_POS;
                             be.rightSegment.endPos = BreakpointEvidence::INVALID_POS;                               
                             be.sequence = suffix(record.seq, length(record.seq) - record.cigar[i].count);
-                            //be.orientation = BreakpointEvidence::ORIENTATION::RIGHT_CLIP;
-                            be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
+                            be.orientation = BreakpointEvidence::ORIENTATION::CLIPPED;
+                            //be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
                             alnInfo.clippedList.push_back(be);
                         }
                     }
@@ -179,13 +179,18 @@ TBreakpointSet::iterator BreakpointCandidate::removeBreakpoint(Breakpoint* bp)
 
 TBreakpointSet::iterator BreakpointCandidate::removeBreakpoint(TBreakpointSet::iterator bpIt)
 {
-    // delete indicies
-    TBreakpointBinIndex *leftIndex, *rightIndex;
-    this->getIndex(&leftIndex, &rightIndex, *bpIt);
-    this->removeIndex(leftIndex, (*bpIt)->minLeftPos, (*bpIt)->maxLeftPos, *bpIt);
-    this->removeIndex(rightIndex, (*bpIt)->minRightPos, (*bpIt)->maxRightPos, *bpIt);
+    // get indices
+    TBreakpointIntervalIndex *leftIndex = getIndex(BreakpointEvidence::LEFT, (*bpIt)->leftTemplateID);
+    TBreakpointIntervalIndex *rightIndex = getIndex(BreakpointEvidence::RIGHT, (*bpIt)->rightTemplateID);
+
+    // remove indices
+    leftIndex->remove((*bpIt)->minLeftPos, (*bpIt)->maxLeftPos, *bpIt);
+    rightIndex->remove((*bpIt)->minRightPos, (*bpIt)->maxRightPos, *bpIt);
     
+    // destroy breakpoint instance
     delete *bpIt;
+
+    // delete in the set & return iterator
     return this->breakpoints.erase(bpIt);
 }
 
@@ -242,7 +247,7 @@ Breakpoint* BreakpointCandidate::copyAndUpdateBreakpoint(Breakpoint* bp, bool& i
     Breakpoint* newBp = new Breakpoint;
     this->copyBreakpoint(*newBp, *bp);
 
-    return this->updateBreakpoint(newBp, true, isNew);
+    return this->updateBreakpoint(newBp, isNew);
 }
 
 Breakpoint* BreakpointCandidate::moveAndUpdateBreakpoint(Breakpoint* bp, bool& isNew)
@@ -250,115 +255,60 @@ Breakpoint* BreakpointCandidate::moveAndUpdateBreakpoint(Breakpoint* bp, bool& i
     Breakpoint* newBp = new Breakpoint;
     this->moveBreakpoint(*newBp, *bp);
 
-    return this->updateBreakpoint(newBp, true, isNew);
+    return this->updateBreakpoint(newBp, isNew);
 }
 
 
-void BreakpointCandidate::findMatchedBreakpoint(TBreakpointSet& leftMatched, TBreakpointSet& rightMatched, Breakpoint* bp, bool checkOrientation)
-{    
-    TBreakpointBinIndex *leftIndex, *rightIndex;
-    TPosition minPos, maxPos;
-
-    // get index & search interval tress
-    this->getIndex(&leftIndex, &rightIndex, bp);
-
-    // same strand
-    bool isSameStrand = (bp->leftReverseFlag == bp->rightReverseFlag);
-
-    if (bp->leftTemplateID != BreakpointEvidence::NOVEL_TEMPLATE)
-    {
-        minPos = bp->minLeftPos;
-        maxPos = bp->maxLeftPos;
-        this->setPositionWithAdj(minPos, maxPos);
-        this->findOverlap(leftMatched, leftIndex, minPos, maxPos, bp->orientation, checkOrientation);
-    }
-
-    if (bp->rightTemplateID != BreakpointEvidence::NOVEL_TEMPLATE)
-    {
-        minPos = bp->minRightPos;
-        maxPos = bp->maxRightPos;
-        this->setPositionWithAdj(minPos, maxPos);
-        this->findOverlap(rightMatched, rightIndex, minPos, maxPos, bp->orientation, checkOrientation);
-    }
-}
-
-
-void BreakpointCandidate::findMatchedBreakpoint(TBreakpointSet& leftMatched, TBreakpointSet& rightMatched, TBreakpointSet& bpEquivalent, Breakpoint* bp, bool checkBothSide)
+void BreakpointCandidate::findBreakpoint(TBreakpointSet& leftSideFound, TBreakpointSet& rightSideFound, TBreakpointSet& bothSideFound, Breakpoint* bp)
 {
-    if (bp->orientation == BreakpointEvidence::ORIENTATION::NOT_DECIDED)
-    {
-        // do not check the orientation (last boolean)
-        this->findMatchedBreakpoint(leftMatched, rightMatched, bp, false);
-    }
-    else
-    {
-        // check the coordinates and orientation (last boolean)
-        this->findMatchedBreakpoint(leftMatched, rightMatched, bp, true);
-    }
-
-    // find equivalent breakpoin
+    // find breakpoints
     if (bp->leftTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
     {
-        // use right-matched set only
-        bpEquivalent = rightMatched;
+        TBreakpointIntervalIndex *index = getIndex(BreakpointEvidence::RIGHT, bp->rightTemplateID);
+        index->find(rightSideFound, bp->minRightPos, bp->maxRightPos, bp);
+        bothSideFound = rightSideFound;
     }
     else if (bp->rightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
     {
         // use left-matched set only
-        bpEquivalent = leftMatched;
+        TBreakpointIntervalIndex *index = getIndex(BreakpointEvidence::LEFT, bp->leftTemplateID);
+        index->find(leftSideFound, bp->minLeftPos, bp->maxLeftPos, bp);
+        bothSideFound = leftSideFound;
     }
     else
     {
-        // check both sides
-        /*
-        TBreakpointSet::iterator itLeft, itRight;
-        for (itLeft = leftMatched.begin(); itLeft != leftMatched.end(); ++itLeft)
-            for (itRight = rightMatched.begin(); itRight != rightMatched.end(); ++itRight)
-                if ( *itLeft == *itRight)
-                    bpEquivalent.insert(*itLeft);
-        */
-        /*
-        for (auto it = leftMatched.begin(); it != leftMatched.end(); ++it)
-            bpEquivalent.insert(*it);
-        for (auto it = rightMatched.begin(); it != rightMatched.end(); ++it)
-            bpEquivalent.insert(*it);
-        */
+        TBreakpointIntervalIndex *leftIndex = getIndex(BreakpointEvidence::LEFT, bp->leftTemplateID);
+        TBreakpointIntervalIndex *rightIndex = getIndex(BreakpointEvidence::RIGHT, bp->rightTemplateID);
+        leftIndex->find(leftSideFound, bp->minLeftPos, bp->maxLeftPos, bp);
+        rightIndex->find(rightSideFound, bp->minRightPos, bp->maxRightPos, bp);
 
-        if (checkBothSide == true)
-        {
-            for (auto it = leftMatched.begin(); it != leftMatched.end(); ++it)
-                if (rightMatched.find(*it) != rightMatched.end())
-                    bpEquivalent.insert(*it);
-        }
-        else 
-        {
-            for (auto it = leftMatched.begin(); it != leftMatched.end(); ++it)
-                bpEquivalent.insert(*it);
-            for (auto it = rightMatched.begin(); it != rightMatched.end(); ++it)
-                bpEquivalent.insert(*it);
-        }
+        // both side found
+        for (auto it = leftSideFound.begin(); it != leftSideFound.end(); ++it)
+            if (rightSideFound.find(*it) != rightSideFound.end())
+                bothSideFound.insert(*it);
     }
 }
 
-Breakpoint* BreakpointCandidate::updateBreakpoint(Breakpoint* bp, bool checkBothSide, bool& isNew)
+
+Breakpoint* BreakpointCandidate::updateBreakpoint(Breakpoint* bp, bool& isNew)
 {
     // find matched breakpoints
-    TBreakpointSet leftMatched, rightMatched, bpEquivalent;
-    this->findMatchedBreakpoint(leftMatched, rightMatched, bpEquivalent, bp, checkBothSide);
+    TBreakpointSet leftSideFound, rightSideFound, bothSideFound;
+    this->findBreakpoint(leftSideFound, rightSideFound, bothSideFound, bp);
 
     // merge found matches
-    if (bpEquivalent.size() > 0)
+    if (bothSideFound.size() > 0)
     {
         // Select one as the reprentative breakpoint(RB)
-        auto itEq = bpEquivalent.begin();
-        Breakpoint* destBp = *(itEq++);
+        auto itBothSide = bothSideFound.begin();
+        Breakpoint* destBp = *(itBothSide++);
 
         // merge new bp to B
         mergeBreakpoint(destBp, bp);
         delete bp;
 
-        for (; itEq != bpEquivalent.end(); ++itEq) // merge others to RB
-            mergeBreakpoint(destBp, *itEq);
+        for (; itBothSide != bothSideFound.end(); ++itBothSide) // merge others to RB
+            mergeBreakpoint(destBp, *itBothSide);
 
         // update index
         updateBreakpointIndex(destBp);
@@ -367,13 +317,13 @@ Breakpoint* BreakpointCandidate::updateBreakpoint(Breakpoint* bp, bool checkBoth
     } 
     else // or add (new breakpoint)
     {
-        this->addBreakpoint(bp);
+        this->addNewBreakpoint(bp);
         isNew = true;
         return bp;
     }    
 }
 
-Breakpoint* BreakpointCandidate::updateBreakpoint(BreakpointEvidence& be, bool checkBothSide, bool& isNew)
+Breakpoint* BreakpointCandidate::updateBreakpoint(BreakpointEvidence& be, bool& isNew)
 {
     // a breakpoint candidate. [begin, end]
     Breakpoint* bp = new Breakpoint;
@@ -429,7 +379,7 @@ Breakpoint* BreakpointCandidate::updateBreakpoint(BreakpointEvidence& be, bool c
     if(bp->rightTemplateID == BreakpointEvidence::NOVEL_TEMPLATE)
         bp->clippedSequences.push_back( std::move(std::make_pair(be.leftSegment.endPos-1, be.sequence)) );
 
-    return this->updateBreakpoint(bp, checkBothSide, isNew);
+    return this->updateBreakpoint(bp, isNew);
 }
 
 void BreakpointCandidate::clearPosInfo(Breakpoint *bp)
@@ -440,6 +390,12 @@ void BreakpointCandidate::clearPosInfo(Breakpoint *bp)
     bp->maxLeftPos = 0;
     bp->minRightPos = BreakpointEvidence::INVALID_POS;
     bp->maxRightPos = 0;
+}
+
+void BreakpointCandidate::updateMinMaxPos(Breakpoint* bp)
+{
+    updateLeftMinMaxPos(bp);
+    updateRightMinMaxPos(bp);
 }
 
 void BreakpointCandidate::updateLeftMinMaxPos(Breakpoint* bp)
@@ -456,49 +412,44 @@ void BreakpointCandidate::updateRightMinMaxPos(Breakpoint* bp)
 
 void BreakpointCandidate::updateBreakpointIndex(Breakpoint* bp)
 {
-    TBreakpointBinIndex *leftIndex, *rightIndex;
-    this->getIndex(&leftIndex, &rightIndex, bp);
-
-    TPosition minPos, maxPos;
     if (bp->needLeftIndexUpdate == true)
     {
+        TBreakpointIntervalIndex *index = getIndex(BreakpointEvidence::LEFT, bp->leftTemplateID);
+
         // remove
-        minPos = bp->minLeftPos;
-        maxPos = bp->maxLeftPos;
-        this->removeIndex(leftIndex, minPos, maxPos, bp);
+        index->remove(bp->minLeftPos, bp->maxLeftPos, bp);
 
         // update & add
         this->updateLeftMinMaxPos(bp);
-        this->addIndex(leftIndex, bp->minLeftPos, bp->maxLeftPos, bp);
         bp->needLeftIndexUpdate = false;
+
+        index->add(bp->minLeftPos, bp->maxLeftPos, bp);
+        
     }
 
     if (bp->needRightIndexUpdate == true)
     {
-        minPos = bp->minRightPos;
-        maxPos = bp->maxRightPos;
-        this->removeIndex(rightIndex, minPos, maxPos, bp);
+        TBreakpointIntervalIndex *index = getIndex(BreakpointEvidence::RIGHT, bp->rightTemplateID);
+        index->remove(bp->minRightPos, bp->maxRightPos, bp);
 
         this->updateRightMinMaxPos(bp);
-        this->addIndex(rightIndex, bp->minRightPos, bp->maxRightPos, bp);
         bp->needRightIndexUpdate = false;
+
+        index->add(bp->minRightPos, bp->maxRightPos, bp);
     }
 }
 
-void BreakpointCandidate::addBreakpoint(Breakpoint* bp)
+void BreakpointCandidate::addNewBreakpoint(Breakpoint* bp)
 {
     // register
     this->breakpoints.insert(bp);
  
     // update index
-    TBreakpointBinIndex *leftIndex, *rightIndex;
-    this->getIndex(&leftIndex, &rightIndex, bp);
-
-    this->updateLeftMinMaxPos(bp);
-    this->addIndex(leftIndex, bp->minLeftPos, bp->maxLeftPos, bp);
-
-    this->updateRightMinMaxPos(bp);
-    this->addIndex(rightIndex, bp->minRightPos, bp->maxRightPos, bp);
+    TBreakpointIntervalIndex *leftIndex = this->getIndex(BreakpointEvidence::LEFT, bp->leftTemplateID);
+    TBreakpointIntervalIndex *rightIndex = this->getIndex(BreakpointEvidence::RIGHT, bp->rightTemplateID);
+    this->updateMinMaxPos(bp);
+    leftIndex->add(bp->minLeftPos, bp->maxLeftPos, bp);
+    rightIndex->add(bp->minRightPos, bp->maxRightPos, bp);
 
     // lazy updating
     bp->needLeftIndexUpdate = false;
@@ -548,144 +499,65 @@ TBreakpointSet::iterator BreakpointCandidate::mergeBreakpoint(Breakpoint* destBp
         return this->breakpoints.end();
 }
 
-void BreakpointCandidate::getIndex(TBreakpointBinIndex** leftIndex, TBreakpointBinIndex** rightIndex, Breakpoint* bp)
+TBreakpointIntervalIndex* BreakpointCandidate::getIndex(BreakpointEvidence::SIDE side, TTemplateID id)
 {
-    *leftIndex = &(this->leftBpIndex[bp->leftTemplateID]);
-    *rightIndex = &(this->rightBpIndex[bp->rightTemplateID]);
-}
-
-void BreakpointCandidate::addIndex(TBreakpointBinIndex* index, TPosition minPos, TPosition maxPos, Breakpoint* bp)
-{
-    if( minPos == BreakpointEvidence::INVALID_POS && maxPos == BreakpointEvidence::INVALID_POS)
-        return;
-
-    if (minPos == BreakpointEvidence::INVALID_POS)
-        minPos = maxPos;
-    else if (maxPos == BreakpointEvidence::INVALID_POS)
-        maxPos = minPos;
-
-    // select a range of positional bin
-    int32_t minPosBin, maxPosBin;
-    minPosBin = GENOMIC_BIN(minPos, BreakpointCandidate::GENOMIC_BIN_SIZE);
-    maxPosBin = GENOMIC_BIN(maxPos, BreakpointCandidate::GENOMIC_BIN_SIZE);
-
-    for (int32_t bin = minPosBin; bin <= maxPosBin; ++bin)
+    if (side == BreakpointEvidence::LEFT)
     {
-        // make a new bin
-        if (index->find(bin) == index->end())
-            index->insert( std::make_pair(bin, new TPosBreakpointVector) );
-
-        // add index        
-        (*index)[bin]->push_back( std::make_pair(std::make_pair(minPos, maxPos), bp) );
-    }
-}
-
-void BreakpointCandidate::removeIndex(TBreakpointBinIndex* index, TPosition minPos, TPosition maxPos, Breakpoint* bp)
-{
-    if( minPos == BreakpointEvidence::INVALID_POS && maxPos == BreakpointEvidence::INVALID_POS)
-        return;
-
-    if (minPos == BreakpointEvidence::INVALID_POS)
-        minPos = maxPos;
-    else if (maxPos == BreakpointEvidence::INVALID_POS)
-        maxPos = minPos;
-
-    int32_t minPosBin, maxPosBin;
-    minPosBin = GENOMIC_BIN(minPos, BreakpointCandidate::GENOMIC_BIN_SIZE);
-    maxPosBin = GENOMIC_BIN(maxPos, BreakpointCandidate::GENOMIC_BIN_SIZE);
- 
-    for (int32_t bin = minPosBin; bin <= maxPosBin; ++bin)
-    {
-        if (index->find(bin) != index->end())
+        if (leftIndexMap.find(id) == leftIndexMap.end())
         {
-            TPosBreakpointVector::iterator it = (*index)[bin]->begin();
-            while( it != (*index)[bin]->end() )
-            {
-                if ( it->second == bp )
-                    it = (*index)[bin]->erase(it);
-                else
-                    ++it;
-            }
+            leftIndexMap.insert(std::make_pair(id, \
+                                new IntervalIndex<Breakpoint*> (GENOMIC_BIN_SIZE, op->getAdjTol(), this->isMatchedBreakpoint)));
         }
+        
+        return leftIndexMap[id];
+    }
+    else if (side == BreakpointEvidence::RIGHT)
+    {
+        if (rightIndexMap.find(id) == rightIndexMap.end())
+        {
+            rightIndexMap.insert(std::make_pair(id, \
+                                new IntervalIndex<Breakpoint*> (GENOMIC_BIN_SIZE, op->getAdjTol(), this->isMatchedBreakpoint)));
+        }
+
+        return rightIndexMap[id];
+    }
+    else
+    {
+        printTimeMessage("Requesting invalid side/id: " + std::to_string((int)side) + "/" + std::to_string((int)id));
+        exit(1);
     }
 }
 
-void BreakpointCandidate::findOverlap(TBreakpointSet& foundSet, TBreakpointBinIndex* index, TPosition minPos, TPosition maxPos, BreakpointEvidence::ORIENTATION orientation, bool checkOrientation)
+bool BreakpointCandidate::addIndex(TBreakpointIntervalIndex* index, TPosition minPos, TPosition maxPos, Breakpoint* bp)
 {
-    if( minPos == BreakpointEvidence::INVALID_POS && maxPos == BreakpointEvidence::INVALID_POS)
-        return;
-
-    if (minPos == BreakpointEvidence::INVALID_POS)
-        minPos = maxPos;
-    else if (maxPos == BreakpointEvidence::INVALID_POS)
-        maxPos = minPos;
-
-    int32_t minPosBin, maxPosBin, adj;
-    minPosBin = GENOMIC_BIN(minPos, BreakpointCandidate::GENOMIC_BIN_SIZE) - 0;
-    maxPosBin = GENOMIC_BIN(maxPos, BreakpointCandidate::GENOMIC_BIN_SIZE) + 0;
-    for (int32_t bin = minPosBin; bin <= maxPosBin; ++bin)
-    {
-        if (index->find(bin) != index->end())
-        {
-            TPosBreakpointVector::iterator it = (*index)[bin]->begin();
-            while( it != (*index)[bin]->end() )
-            {
-                // it->first.first : begin pos
-                // it->first.second : end pos
-                // it->second : breakpoint pointer
-                // 0-based, [begin, end)
-                
-                
-                /*
-                if ( isOverlap(it->first.first, it->first.second, minPos, maxPos) || \
-                     (IS_ADJACENT(it->first.first, minPos, adj) || \
-                      IS_ADJACENT(it->first.second, maxPos, adj)))
-                */
-                if (IS_OVERLAP(it->first.first, it->first.second, minPos, maxPos))
-                {
-                    Breakpoint* bp = it->second;
-                    if (checkOrientation == true)
-                    {
-                        if ((bp->orientation) == orientation)
-                            foundSet.insert(bp);
-                    }
-                    else
-                        foundSet.insert(bp);
-                }
-                ++it;
-            }
-        }
-    }
+    return index->add(minPos, maxPos, bp);
 }
 
 // 0-based, [begin, end)
 bool BreakpointCandidate::isOverlap(TPosition beginPos1, TPosition endPos1, TPosition beginPos2, TPosition endPos2)
 {
-    return ((beginPos1 <= beginPos2 and beginPos2 < endPos1) or \
-           (beginPos2 <= beginPos1 and beginPos1 < endPos2) or \
-           (beginPos1 <= beginPos2 and endPos2 < endPos1) or \
-           (beginPos2 <= beginPos1 and endPos1 < endPos2));
+    return TBreakpointIntervalIndex::isOverlap(beginPos1, endPos1, beginPos2, endPos2);
+
 }
 
 bool BreakpointCandidate::isOverlap(SequenceSegment& s1, SequenceSegment& s2)
 {
-    /*
-    return (s1.isReverse == s2.isReverse) and (s1.templateID == s2.templateID) and \
-           BreakpointCandidate::isOverlap(s1.beginPos, s1.endPos, s2.beginPos, s2.endPos);
-    */
-    return BreakpointCandidate::isOverlap(s1.beginPos, s1.endPos, s2.beginPos, s2.endPos);
+    return TBreakpointIntervalIndex::isOverlap(s1.beginPos, s1.endPos, s2.beginPos, s2.endPos);
 }
 
 // 0-based, [begin, end)
 bool BreakpointCandidate::isAdjacent(TPosition beginPos1, TPosition endPos1, TPosition beginPos2, TPosition endPos2, TPosition tol)
 {
-    return ( (endPos1 <= beginPos2 and ((beginPos2 - endPos1) <= tol)) or \
-             (endPos2 <= beginPos1 and ((beginPos1 - endPos2) <= tol)) );
+    if (endPos1 <= beginPos2)
+        return TBreakpointIntervalIndex::isAdjacent(beginPos2, endPos1, tol);
+    else if (endPos2 <= beginPos1)
+        return TBreakpointIntervalIndex::isAdjacent(beginPos1, endPos2, tol);
+    return false;
 }
 
 bool BreakpointCandidate::isAdjacent(TPosition pos1, TPosition pos2, TPosition tol)
 {
-    return ( abs(pos2-pos1) <= tol );
+    return TBreakpointIntervalIndex::isAdjacent(pos1, pos2, tol);
 }
 
 bool BreakpointCandidate::isAdjacent(SequenceSegment& s1, SequenceSegment& s2)
@@ -772,19 +644,29 @@ void BreakpointCandidate::setInsertionInfo(double median, double stdev, double m
 
 BreakpointCandidate::~BreakpointCandidate()
 {
-    // TODO : release memory!
-    //(breakpoints)
-    std::set<Breakpoint*>::iterator it;
-    for(it = this->breakpoints.begin(); it != this->breakpoints.end(); ++it)
+    // release memory   
+    for(auto it = this->breakpoints.begin(); it != this->breakpoints.end(); ++it)
         delete *it;
+    breakpoints.clear();
+
+    for(auto it = this->leftIndexMap.begin(); it != this->leftIndexMap.end(); ++it)
+        delete it->second;
+    leftIndexMap.clear();
+
+    for(auto it = this->rightIndexMap.begin(); it != this->rightIndexMap.end(); ++it)
+        delete it->second;
+    rightIndexMap.clear();
 } 
 
-BreakpointCandidate::BreakpointCandidate()
+BreakpointCandidate::BreakpointCandidate(OptionManager* op)
 {
-    
+    setOptionManager(op);
 }
 
-bool BreakpointCandidate::isMatchedBreakpoint(Breakpoint*, Breakpoint*)
+bool BreakpointCandidate::isMatchedBreakpoint(Breakpoint* a, Breakpoint* b)
 {
-    return true;
+    if (a->orientation == BreakpointEvidence::ORIENTATION::CLIPPED)
+        return true;
+    else
+        return (a->orientation == b->orientation);
 }

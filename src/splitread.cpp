@@ -41,7 +41,7 @@ bool SplitRead::updateBreakpointByIndels(std::vector<BreakpointEvidence>& beList
     for (unsigned i=0; i < beList.size(); ++i) // for each 
     {
         BreakpointEvidence& be = beList[i];
-        Breakpoint* bp = this->updateBreakpoint(be, true, isNew);
+        Breakpoint* bp = this->updateBreakpoint(be, isNew);
 
         // every breakpoints based on split-read have exact positions.
         bp->bFoundExactPosition = true; 
@@ -250,7 +250,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
             }
 
             bool isNew;
-            Breakpoint *newBp = this->updateBreakpoint(be, true, isNew);
+            Breakpoint *newBp = this->updateBreakpoint(be, isNew);
             newBp->bFoundExactPosition = true;                
         }
     }

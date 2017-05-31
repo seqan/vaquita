@@ -60,7 +60,7 @@ int main(int argc, char const ** argv)
     RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // segmentation fault if fails
     printTimeMessage("Found evidences");
     printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");
-    printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from abnormal read-pairs.");
+    printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from discordant read-pairs.");
     printTimeMessage(std::to_string(alnMgr.getClippedReadCount()) + " from soft-clipped reads.");
 
     // Identification
