@@ -34,13 +34,14 @@
 #include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
 #include "vaquita.hpp"
+#include "option.hpp"
 #include "misc.hpp"
 #include "sv.hpp"
 
-int main(int argc, char const ** argv)
+int callMain(int argc, char const ** argv)
 {
     // get options
-    OptionManager oMgr;
+    CallOptionManager oMgr;
     time_t startTime, endTime;
     bool result;
 
@@ -96,6 +97,40 @@ int main(int argc, char const ** argv)
 
     time(&endTime);
     printMessage("Total elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");
+
+    return 0;
+}
+
+int callMerge(int argc, char const ** argv)
+{
+    return 0;
+}
+
+int main(int argc, char const ** argv)
+{
+    OptionManager oMgr;
+    oMgr.init();
+
+    if (argc > 1)
+    {
+        std::string cmd(argv[1]);
+        if (cmd == "call")
+        {
+            callMain(argc-1, argv+1);
+        }
+        else if (cmd == "merge")
+        {
+            callMain(argc-1, argv+1);
+        }
+        else
+        {
+            oMgr.parseCommandLine(argc, argv);
+        }
+    }
+    else
+    {
+        oMgr.printHelpMessage();
+    }
 
     return 0;
 }

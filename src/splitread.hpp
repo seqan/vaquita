@@ -52,7 +52,7 @@ class SplitRead : public BreakpointCandidate
         bool updateBreakpointByIndels(std::vector<BreakpointEvidence>&);
 
     public:
-        SplitRead(OptionManager* o):BreakpointCandidate(o) {};
+        SplitRead(CallOptionManager* o):BreakpointCandidate(o) {};
 
         bool analyze(void);
         bool analyzeRead(TReadName&);

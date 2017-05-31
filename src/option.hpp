@@ -36,6 +36,7 @@
 
 #include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
+#include "misc.hpp"
 
 using namespace seqan;
 
@@ -45,97 +46,13 @@ using namespace seqan;
 class OptionManager : public ArgumentParser
 {
     private :
-        CharString inputFile;
-        CharString outputFile;
-        CharString outputFormat;
-
-        // general options
-        int32_t minMapQual;
-        int32_t minSVSize;
-        int32_t adjTol;
-        int32_t cutoff;
-        int32_t minVote;
-        int32_t priMethod;
-        int32_t filterMethod;
-        unsigned int threadCount;
-        bool writeBreakpoint;
-        bool reportFilteredResult;
-        bool useRankAggregation;
-
-        // for split-read
-        double minSplitReadSupport;
-
-        // for paired-end
-        double minPairSupport;
-        double abInsParam;
-        double depthOutlier;
-        int32_t pairedEndSearchSize;
-        bool doPairedEndRead;
-        
-        // for clipped read
-        double minClippedReadSupport;
-        int32_t minClippedSeqSize;
-        CharString referenceGenome;
-        double clippedSeqErrorRate;
-        bool doClippedRead;
-        bool useAssembly;
-
-        // for read-depth analysis
-        double reThreshold;
-        int32_t samplingNum;
-        int32_t readDepthWindowSize;
-        bool doReadDepth;
-        bool useREforBalancedSV;
+        CharString command;
 
     public :
-    	OptionManager()
-    	{
-    		threadCount = 0;
-#ifdef _OPENMP
-	    	threadCount = std::thread::hardware_concurrency();
-#endif
-    	}
+        void init(void);
+        bool parseCommandLine(int argc, char const ** argv);
+        std::string getCommand(void) { return CharStringToStdString(this->command); };
 
-    	void init(void);
-      	bool parseCommandLine(int argc, char const ** argv);
-        CharString getInputFile(void) { return inputFile; }
-        void printUserInput(void);
-
-        // general options
-        int32_t getMinMapQual(void) { return minMapQual; } 
-        int32_t getMinSVSize(void) { return minSVSize; }
-        int32_t getAdjTol(void) { return adjTol; }
-        int32_t getCutoff(void) { return cutoff; }
-        int32_t getMinVote(void) { return minVote; }
-        int32_t getPriMethod(void) { return priMethod; }
-        int32_t getFilterMethod(void) { return filterMethod; }
-        bool getWriteBreakpoint(void) { return writeBreakpoint; }
-        bool getReportFilteredResult(void) { return reportFilteredResult; }
-        bool getUseRankAggregation(void) { return useRankAggregation; }
-        void setMinVote(int v) { this->minVote = v;}
-
-        // for split-read
-        double getMinSplitReadSupport(void) { return minSplitReadSupport; }        
-
-        // for paired-end
-        bool doPairedEndAnalysis(void) { return doPairedEndRead; }
-        double getAbInsParam(void) { return abInsParam; }
-        double getMinPairSupport(void) { return minPairSupport; }
-        double getPairedEndSearchSize(void) { return pairedEndSearchSize;}
-        double getDepthOutlier(void) { return depthOutlier;}
-
-        // for clipped read
-        bool doClippedReadAnalysis(void) { return doClippedRead; }
-        int32_t getMinClippedSeqSize(void) { return minClippedSeqSize; }
-        CharString getReferenceGenome(void) { return referenceGenome; }
-        double getClippedSeqErrorRate(void) { return clippedSeqErrorRate; }
-        int32_t isUsingAssembly(void) { return useAssembly; }
-
-        // for read-depth analysis
-        bool doReadDepthAnalysis(void) { return doReadDepth; }
-        int32_t getReadDepthWindowSize(void) { return readDepthWindowSize; }
-        double getReOutlierCutoff(void) { return reThreshold; }
-        int32_t getSamplingNum(void) { return samplingNum; }
-        bool getUseREforBalancedSV(void) { return useREforBalancedSV; }
+        void printHelpMessage(void) { printHelp(*this); }
 };
 #endif // APP_OPTION_H_

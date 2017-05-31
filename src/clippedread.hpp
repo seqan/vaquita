@@ -88,7 +88,7 @@ class ClippedRead : public BreakpointCandidate
         std::map<TTemplateID, TPosition> templateSize;
        
     public:
-        ClippedRead(OptionManager* o):BreakpointCandidate(o) {};
+        ClippedRead(CallOptionManager* o):BreakpointCandidate(o) {};
 
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);

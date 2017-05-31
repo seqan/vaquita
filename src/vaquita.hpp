@@ -33,5 +33,10 @@
 // ==========================================================================
 #ifndef APP_VAQUITA_H_
 #define APP_VAQUITA_H_
-#define APP_NAME "Vaquita"
+
+#define APP_NAME            "Vaquita"
+#define APP_TITLE           "Identification of Structural Variations using Combined Evidence"
+#define APP_COPYRIGHT       "Copyright 2017 by Jongkyu Kim."
+#define APP_AUTHOR_INFO     "Developed by Jongkyu Kim (MPI-Molgen & Freie University Berlin)."
+#define APP_WEBSITE_INFO    "Please visit \\fIhttps://github.com/xenigmax/vaquita\\fP for more information."
 #endif // APP_VAQUITA_H_

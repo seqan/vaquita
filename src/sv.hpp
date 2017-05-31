@@ -84,7 +84,7 @@ class SVManager
 {
     private :
         BreakpointManager* bpManager;
-        OptionManager* opManager;
+        CallOptionManager* opManager;
         AlignmentManager*   alnManager;
 
         std::map<std::string, std::vector<VcfRecordEnhanced> > sv;

@@ -804,8 +804,8 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
     double seTH = this->getOptionManager()->getMinSplitReadSupport();
     double peTH = this->getOptionManager()->getMinPairSupport();
     double reTH = this->getReadDepth()->getReTH();
-    unsigned cutoff = this->getOptionManager()->getCutoff();
-    unsigned minVote = this->getOptionManager()->getMinVote();
+    int32_t cutoff = this->getOptionManager()->getCutoff();
+    int32_t minVote = this->getOptionManager()->getMinVote();
     if (minVote < 0)
     {
         minVote = 1;
@@ -830,7 +830,7 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         finalBreakpointInfo->filtered = true;
 
         // Voting
-        unsigned vote = 0;
+        int32_t vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
         if (this->getOptionManager()->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)

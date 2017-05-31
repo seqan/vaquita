@@ -34,7 +34,7 @@
 #ifndef APP_BREAKPOINT_H_
 #define APP_BREAKPOINT_H_
 
-#include "option.hpp"
+#include "calloption.hpp"
 #include "alignment.hpp"
 #include "splitread.hpp"
 #include "pairedend.hpp"
@@ -65,7 +65,7 @@ typedef std::map<CharString, unsigned>  TKmerSet;
 class BreakpointManager
 {
     private :
-        OptionManager*      optionManager;
+        CallOptionManager*  optionManager;
         AlignmentManager*   alignmentManager;
         SplitRead*          splitReadBreakpoints;
         PairedEndRead*      pairedEndBreakpoints;
@@ -105,7 +105,7 @@ class BreakpointManager
         void getNTCount(CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
 
         inline AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
-        inline OptionManager* getOptionManager(void) { return this->optionManager; }
+        inline CallOptionManager* getOptionManager(void) { return this->optionManager; }
         inline SplitRead* getSplitRead(void) { return this->splitReadBreakpoints; }
         inline PairedEndRead* getPairedEndRead(void) { return this->pairedEndBreakpoints; }
         inline ClippedRead* getClippedRead(void) { return this->clippedBreakpoints; }

@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ class ReadDepth : public BreakpointCandidate
         uint32_t refSize = 0;
 
     public:
-        ReadDepth(OptionManager* o):BreakpointCandidate(o) {};
+        ReadDepth(CallOptionManager* o):BreakpointCandidate(o) {};
 
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void parseReadRecord(CharString&, BamAlignmentRecord&);

@@ -46,7 +46,7 @@ class PairedEndRead : public BreakpointCandidate
 		void getCandidateRegion(TPosition&, TPosition&, BreakpointEvidence::SIDE);
 
     public:
-        PairedEndRead(OptionManager* o) : BreakpointCandidate(o) {};
+        PairedEndRead(CallOptionManager* o) : BreakpointCandidate(o) {};
 
         bool analyze(void);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);

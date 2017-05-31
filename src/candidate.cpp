@@ -658,7 +658,7 @@ BreakpointCandidate::~BreakpointCandidate()
     rightIndexMap.clear();
 } 
 
-BreakpointCandidate::BreakpointCandidate(OptionManager* op)
+BreakpointCandidate::BreakpointCandidate(CallOptionManager* op)
 {
     setOptionManager(op);
 }

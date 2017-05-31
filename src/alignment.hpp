@@ -34,7 +34,7 @@
 #ifndef APP_ALIGNMENT_H_
 #define APP_ALIGNMENT_H_
 
-#include "option.hpp"
+#include "calloption.hpp"
 #include "candidate.hpp"
 
 // ==========================================================================
@@ -50,7 +50,7 @@ class AlignmentManager
         double K = 1.4826;
 
         // option
-        OptionManager* optionManager;
+        CallOptionManager* optionManager;
 
         // bam record
         BamFileIn       bamFileIn;
@@ -86,7 +86,7 @@ class AlignmentManager
 
     public :
         AlignmentManager() : optionManager(NULL) {}
-    	AlignmentManager(OptionManager & op) { init(op); }
+    	AlignmentManager(CallOptionManager & op) { init(op); }
         ~AlignmentManager() 
         {
             // TODO : release memory! (TBamRecords)
@@ -94,7 +94,7 @@ class AlignmentManager
             close(*pBamFileOut);
         }
    	
-        void init(OptionManager & op)
+        void init(CallOptionManager & op)
         { 
             optionManager = &op; 
             insertMedian = 0; 
@@ -130,7 +130,7 @@ class AlignmentManager
         int32_t getRefCount();
         std::map<TTemplateID, TPosition>* getTemplateLength(void) { return &templateLength; }
 
-        OptionManager* getOptionManager(void) { return this->optionManager; }
+        CallOptionManager* getOptionManager(void) { return this->optionManager; }
         void printRecord(BamAlignmentRecord &);
         bool load(void);
 };

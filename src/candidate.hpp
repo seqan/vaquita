@@ -43,7 +43,7 @@
 #include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
-#include "option.hpp"
+#include "calloption.hpp"
 #include "intervalindex.hpp"
 
 using namespace seqan;
@@ -51,12 +51,14 @@ using namespace seqan;
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-typedef uint8_t                 TTemplateID;
-typedef uint32_t                TPosition;
-typedef CharString              TReadName;
-typedef uint32_t                TReadID;
-typedef bool                    TStrand;
-typedef std::vector<TPosition>  TPositionList;
+typedef uint8_t                         TTemplateID;
+typedef uint32_t                        TPosition;
+typedef uint16_t                        TRelativePosition;
+typedef CharString                      TReadName;
+typedef uint32_t                        TReadID;
+typedef bool                            TStrand;
+typedef std::vector<TPosition>          TPositionList;
+typedef std::vector<TRelativePosition>  TRelativePositionList;
 
 struct SequenceSegment
 {
@@ -89,26 +91,27 @@ struct AlignmentInfo
 };
 
 typedef std::vector<std::pair<TPosition, DnaString> >              TClippedSequences;
-struct Breakpoint
+class Breakpoint
 {  
-    TTemplateID leftTemplateID, rightTemplateID;
-    TStrand leftReverseFlag, rightReverseFlag;
-    BreakpointEvidence::ORIENTATION orientation;
+    public :
+        TTemplateID leftTemplateID, rightTemplateID;
+        TStrand leftReverseFlag, rightReverseFlag;
+        BreakpointEvidence::ORIENTATION orientation;
 
-    // candidate positions
-    TPositionList   leftPos, rightPos;
-    TPosition       minLeftPos, maxLeftPos, minRightPos, maxRightPos;
+        // candidate positions
+        TPosition       minLeftPos, maxLeftPos, minRightPos, maxRightPos;
+        TPositionList   leftPos, rightPos;
 
-    // supporting reads
-    uint16_t suppReads;
+        // supporting reads
+        uint16_t suppReads;
 
-    // clipped sequences
-    TClippedSequences clippedSequences;
-    TPosition clippedConsensusSequenceSize = 0;
+        // clipped sequences
+        TClippedSequences clippedSequences;
+        TPosition clippedConsensusSequenceSize = 0;
 
-    bool needLeftIndexUpdate = false;
-    bool needRightIndexUpdate = false;
-    bool bFoundExactPosition = false;
+        bool needLeftIndexUpdate = false;
+        bool needRightIndexUpdate = false;
+        bool bFoundExactPosition = false;
 };
 
 typedef String<Breakpoint*>                                         TBreakpointList;
@@ -134,7 +137,7 @@ class BreakpointCandidate
         double maxAbInsSize;
         double minAbInsSize;
 
-        OptionManager* op;
+        CallOptionManager* op;
         TBreakpointIntervalIndexMap leftIndexMap, rightIndexMap;
         TBreakpointSet     breakpoints;
 
@@ -145,7 +148,7 @@ class BreakpointCandidate
         bool removeIndex(TBreakpointIntervalIndex*, TPosition, TPosition, Breakpoint*);
 
     public :
-        BreakpointCandidate(OptionManager*);
+        BreakpointCandidate(CallOptionManager*);
         ~BreakpointCandidate();
        
         void setPositionalAdj(int32_t a) { this->posAdj = a; }
@@ -159,8 +162,8 @@ class BreakpointCandidate
         double getMinAbInsSize() { return minAbInsSize; }
 
         // options
-        void setOptionManager(OptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
-        OptionManager* getOptionManager(void) { return this->op; }
+        void setOptionManager(CallOptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
+        CallOptionManager* getOptionManager(void) { return this->op; }
         int32_t getBreakpointCount(void) { return this->breakpoints.size(); }
                         
         // operations for breakpoints

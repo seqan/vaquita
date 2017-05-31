@@ -58,7 +58,7 @@ class MergedCandidate : public BreakpointCandidate
         unsigned filteredBreakpointCount = 0;
 
     public:
-        MergedCandidate(OptionManager* o):BreakpointCandidate(o) {};
+        MergedCandidate(CallOptionManager* o):BreakpointCandidate(o) {};
 
         void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
        
