@@ -70,15 +70,16 @@ void OptionManager::init()
     setDefaultValue(*this, "minSVSize", "50");
     addOption(*this, ArgParseOption("a", "adjTol", "Positional adjacency in nucleotide resolution.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "adjTol", "50");
-    addOption(*this, ArgParseOption("c", "cutoff", "Mininum number of supporting read-pairs and split-reads", ArgParseOption::INTEGER, "INT"));
+    addOption(*this, ArgParseOption("c", "cutoff", "Minimum number of supporting read-pairs and split-reads.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "cutoff", "4");
-    addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
-    setDefaultValue(*this, "minVote", "3");
+    addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : Supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
+    setDefaultValue(*this, "minVote", "-1");
     addOption(*this, ArgParseOption("", "no-rank-aggregation", "Do not use rank-aggregation for prioritization."));
     setDefaultValue(*this, "no-rank-aggregation", "false");
     addOption(*this, ArgParseOption("", "report-filtered", "Report filtered result"));
     setDefaultValue(*this, "report-filtered", "false");
-
+    addOption(*this, ArgParseOption("cg", "referenceGenome", "Genome sequence file(.fa).", ArgParseOption::INPUT_FILE));
+    setValidValues(*this, "referenceGenome", ".fa");
 
     /* this option is for debugging
     addOption(*this, ArgParseOption("", "write-breakpoint", "Write breakpoint informtation in a tab-separated format (breakpoints.tsv)."));
@@ -92,9 +93,9 @@ void OptionManager::init()
     addSection(*this, "Read-pair evidence");
     addOption(*this, ArgParseOption("pe", "minPairSupport", "SVs supported by >=pe get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "minPairSupport", "1");
-    addOption(*this, ArgParseOption("ps", "pairedEndSearchSize", "Size of the candidate regions.", ArgParseOption::INTEGER, "INT"));
+    addOption(*this, ArgParseOption("ps", "pairedEndSearchSize", "Size of breakpoint candidate regions.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "pairedEndSearchSize", "500");
-    addOption(*this, ArgParseOption("pi", "abInsParam", "Abnormal insertion size: median +/- (MAD * pi)", ArgParseOption::DOUBLE, "FLOAT"));
+    addOption(*this, ArgParseOption("pi", "abInsParam", "Discordant insertion size: median +/- (MAD * pi)", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "abInsParam", "9.0");
     addOption(*this, ArgParseOption("pd", "depthOutlier", "Depth outlier: {Q3 + (IQR * pd)}", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "depthOutlier", "1.0");
@@ -104,22 +105,20 @@ void OptionManager::init()
     addSection(*this, "Soft-clipped evidence");
     addOption(*this, ArgParseOption("cs", "minClippedSeqSize", "Minimum size of clipped sequence to be considered.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "minClippedSeqSize", "20");
-    addOption(*this, ArgParseOption("ce", "clippedSeqErrorRate", "Edit distance will be decided by floor{length of clipped sequence * (1 - editDistanceParam)}.", ArgParseOption::DOUBLE, "FLOAT"));
+    addOption(*this, ArgParseOption("ce", "clippedSeqErrorRate", "Maximum edit distance: floor{length of clipped sequence * (1 - ce)}.", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "clippedSeqErrorRate", "0.1");
-    addOption(*this, ArgParseOption("cg", "referenceGenome", "Genome sequence file(.fa).", ArgParseOption::INPUT_FILE));
-    setValidValues(*this, "referenceGenome", ".fa");
     //addOption(*this, ArgParseOption("", "use-assembly", "Use consitency based sequence assembly(deprecated)."));
     //setDefaultValue(*this, "use-assembly", "false");
     addOption(*this, ArgParseOption("", "no-ce", "Do not use soft-clipped evidence."));
     setDefaultValue(*this, "no-ce", "false");
     
     addSection(*this, "Read-depth evidence");
-    addOption(*this, ArgParseOption("re", "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * re)} get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
-    setDefaultValue(*this, "reThreshold", "1.0");
     addOption(*this, ArgParseOption("rs", "samplingNum", "Number of random sample to estimate the background distribution(Q3, IQR, ..) of read-depth evidence.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "samplingNum", "100000");
     addOption(*this, ArgParseOption("rw", "readDepthWindowSize", "Window size to caclulate average read-depth around breakpoints.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "readDepthWindowSize", "20");
+    addOption(*this, ArgParseOption("re", "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * re)} get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    setDefaultValue(*this, "reThreshold", "1.0");
     addOption(*this, ArgParseOption("", "use-re-for-bs", "Use RE for balanced SVs(eg. inverison)."));
     setDefaultValue(*this, "use-re-for-bs", "false");
     addOption(*this, ArgParseOption("", "no-re", "Do not use read-depth evidence."));
