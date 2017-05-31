@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ void OptionManager::init()
     // description
     addDescription(*this, "Vaquita: Fast and Accurate Identification of Structural Variation using Combined Evidence (Kim, 2017)");
     addDescription(*this, "See \\fIhttps://github.com/xenigmax/vaquita\\fP");
-    addDescription(*this, "Copyright 2016 by Jongkyu Kim.");
+    addDescription(*this, "Copyright 2017 by Jongkyu Kim.");
 
     // mandatory arguments
     addArgument(*this, ArgParseArgument(ArgParseArgument::INPUT_FILE, "ALIGNMENT(.bam)")); 
@@ -72,7 +72,7 @@ void OptionManager::init()
     setDefaultValue(*this, "adjTol", "50");
     addOption(*this, ArgParseOption("c", "cutoff", "Minimum number of supporting read-pairs and split-reads.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "cutoff", "4");
-    addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1 : Supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
+    addOption(*this, ArgParseOption("v", "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1: Supported by all evidence types.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "minVote", "-1");
     addOption(*this, ArgParseOption("", "no-rank-aggregation", "Do not use rank-aggregation for prioritization."));
     setDefaultValue(*this, "no-rank-aggregation", "false");
@@ -87,11 +87,11 @@ void OptionManager::init()
     */
 
     addSection(*this, "Split-read evidence");
-    addOption(*this, ArgParseOption("se", "minSplitReadSupport", "SVs supported by >=se(+ce) get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    addOption(*this, ArgParseOption("se", "minSplitReadSupport", "SVs supported by >= se(+ce) get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "minSplitReadSupport", "1");
 
     addSection(*this, "Read-pair evidence");
-    addOption(*this, ArgParseOption("pe", "minPairSupport", "SVs supported by >=pe get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
+    addOption(*this, ArgParseOption("pe", "minPairSupport", "SVs supported by >= pe get a vote.", ArgParseOption::DOUBLE, "FLOAT"));
     setDefaultValue(*this, "minPairSupport", "1");
     addOption(*this, ArgParseOption("ps", "pairedEndSearchSize", "Size of breakpoint candidate regions.", ArgParseOption::INTEGER, "INT"));
     setDefaultValue(*this, "pairedEndSearchSize", "500");
