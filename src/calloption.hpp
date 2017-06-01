@@ -64,6 +64,8 @@ class CallOptionManager : public ArgumentParser
 
         // for split-read
         double minSplitReadSupport;
+        int32_t maxSplit;
+        int32_t maxOverlap;
 
         // for paired-end
         double minPairSupport;
@@ -100,6 +102,7 @@ class CallOptionManager : public ArgumentParser
       	bool parseCommandLine(int argc, char const ** argv);
         CharString getInputFile(void) { return inputFile; }
         void printUserInput(void);
+        std::string getBooleanString(bool);
 
         // general options
         int32_t getMinMapQual(void) { return minMapQual; } 
@@ -115,7 +118,9 @@ class CallOptionManager : public ArgumentParser
         void setMinVote(int v) { this->minVote = v;}
 
         // for split-read
-        double getMinSplitReadSupport(void) { return minSplitReadSupport; }        
+        double getMinSplitReadSupport(void) { return minSplitReadSupport; }
+        int32_t getMaxSplit(void) { return maxSplit; }
+        int32_t getMaxOverlap(void) { return maxOverlap; }
 
         // for paired-end
         bool doPairedEndAnalysis(void) { return doPairedEndRead; }

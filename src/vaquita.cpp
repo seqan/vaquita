@@ -120,7 +120,7 @@ int main(int argc, char const ** argv)
         }
         else if (cmd == "merge")
         {
-            callMain(argc-1, argv+1);
+            callMerge(argc-1, argv+1);
         }
         else
         {

@@ -54,14 +54,14 @@ bool SplitRead::analyzeRead(TReadName& readName)
     if (itRead == this->recordByRead.end())
         return false;
 
-    if (itRead->second.size() > 2) // not confident (too-many segments)
+    if (itRead->second.size() > this->getOptionManager()->getMaxSplit()) // not confident (too-many segments)
         return false;
     
     // get readID
     TReadID readID = this->getNextReadID(); // this must be unique
     
     // extract information form local alignments
-    uint32_t minQuality = 999999;
+    uint32_t minQuality = MaxValue<uint32_t>::VALUE;;
     std::vector<AlignmentInfo> localAligns;
     TPosition querySize = 0;
     for(auto it = itRead->second.begin(); it != itRead->second.end(); ++it) // for each segment
@@ -83,11 +83,6 @@ bool SplitRead::analyzeRead(TReadName& readName)
     if (minQuality < this->getOptionManager()->getMinMapQual())
         return false;
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // TODO: These addtional quailiy controls must be shown to users (provide options)
-    unsigned maxOverlapSize = 20;
-    ///////////////////////////////////////////////////////////////////////////////////
-
     // sort according to the start position in the query
     sort(localAligns.begin(), localAligns.end(), BreakpointCandidate::compareByQueryPos);
   
@@ -95,6 +90,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
     this->updateBreakpointByIndels( FIRST_ELEMENT(localAligns).indelList );
 
     // for each alignment
+    unsigned maxOverlapSize = this->getOptionManager()->getMaxOverlap();
     for(unsigned int i=1; i < localAligns.size(); ++i)
     {
         // check indels

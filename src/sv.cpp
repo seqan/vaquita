@@ -135,14 +135,17 @@ bool SVManager::writeVCF(void)
     // headers
     appendValue(vcfHeader, VcfHeaderRecord("fileformat", "VCFv4.1"));
     appendValue(vcfHeader, VcfHeaderRecord("source", APP_NAME));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RT,Number=1,Type=Float,Description=\"Number of split-read and read-pairs supporting the structural variation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the structural variation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the structural variation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Number of read-pairs supporting the structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SC,Number=1,Type=Float,Description=\"Overall score\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=VT,Number=1,Type=Float,Description=\"Number of evidences types supporting the SV\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Read depth descrepancy around the SV\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RD,Number=1,Type=Float,Description=\"Read-depth around structural variation\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=GC,Number=1,Type=Float,Description=\"GC content around the SV\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CP,Number=1,Type=Float,Description=\"Shannon entropy around the SV\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
