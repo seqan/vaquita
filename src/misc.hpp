@@ -34,6 +34,7 @@
 #ifndef APP_MISC_H_
 #define APP_MISC_H_
 
+#include <vector>
 #include <string>
 #include <ctime>
 
@@ -51,5 +52,5 @@ void printMessage(std::string);
 void printTimeMessage(std::string);
 void startTimeMessage(std::string);
 void endTimeMessage(std::string);
-
+void splitString(std::vector<std::string>&, std::string&, std::string&);
 #endif // APP_MISC_H_

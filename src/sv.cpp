@@ -69,6 +69,86 @@ bool SVManager::filterImpreciseDel(void)
     printTimeMessage("Filtered imprecise deletions: " + std::to_string(filtered));
 }
 
+bool SVManager::loadVcf(std::string& fileName, bool useAll)
+{
+    VcfFileIn vcfIn(toCString(fileName));
+
+    // header
+    VcfHeader header;
+    readHeader(header, vcfIn);
+
+    // eg. RD=0.0;SVTYPE=DEL
+    std::string deli1(";");
+    std::string deli2("=");
+
+    while (!atEnd(vcfIn))
+    {
+        VcfRecordEnhanced record;
+        readRecord(record, vcfIn);
+
+        // split by ";"
+        std::vector<std::string> info;
+        std::string s = CharStringToStdString(record.info);
+        splitString(info, s, deli1);
+
+        // split by "="
+        std::map<std::string, std::string> mapInfo;
+        for (auto it = info.begin(); it != info.end(); ++it)
+        {
+            std::vector<std::string> info2;
+            splitString(info2, *it, deli2);
+
+            mapInfo[info2[0]] = "";
+            if (info2.size() > 1)
+                mapInfo[info2[0]] = info2[1];
+        }
+
+        // fill information
+        if (mapInfo.find("SVLEN") != mapInfo.end())
+            record.endPos = record.beginPos + abs(std::stoll(mapInfo["SVLEN"])) - 1;
+        else
+            record.endPos = 0;
+
+        if (mapInfo.find("TARGETPOS") != mapInfo.end())
+            record.targetPos = std::stoul(mapInfo["TARGETPOS"]);
+        if (mapInfo.find("SE") != mapInfo.end())
+            record.se = std::stoul(mapInfo["SE"]);
+        if (mapInfo.find("PE") != mapInfo.end())
+            record.pe = std::stoul(mapInfo["PE"]);
+        if (mapInfo.find("CE") != mapInfo.end())
+            record.ce = std::stoul(mapInfo["CE"]);
+        if (mapInfo.find("RE") != mapInfo.end())
+            record.re = std::stod(mapInfo["RE"]);
+        if (mapInfo.find("SC") != mapInfo.end())
+            record.sc = std::stod(mapInfo["SC"]);
+        if (mapInfo.find("RD") != mapInfo.end())
+            record.rd = std::stod(mapInfo["RD"]);
+        if (mapInfo.find("GC") != mapInfo.end())
+            record.gc = std::stod(mapInfo["GC"]);
+        if (mapInfo.find("CP") != mapInfo.end())
+            record.cp = std::stod(mapInfo["CP"]);
+        if (mapInfo.find("VT") != mapInfo.end())
+            record.vt = std::stoi(mapInfo["VT"]);
+
+        if (CharStringToStdString(record.filter) == VcfRecordEnhanced::STATUS_PASS())
+            record.filter = VcfRecordEnhanced::STATUS::PASS;
+        else if (CharStringToStdString(record.filter) == VcfRecordEnhanced::STATUS_FILTERED())
+            record.filter = VcfRecordEnhanced::STATUS::FILTERED;
+        else if (CharStringToStdString(record.filter) == VcfRecordEnhanced::STATUS_MERGED())
+            record.filter = VcfRecordEnhanced::STATUS::MERGED;
+
+        record.imprecise = (mapInfo.find("IMPRECISE") != mapInfo.end());
+        record.chrName = CharStringToStdString(contigNames(context(vcfIn))[record.rID]);
+
+        // filter
+        if (useAll == false && record.filter != VcfRecordEnhanced::STATUS::PASS)
+            continue;
+        
+        // store it
+        sv[mapInfo["SVTYPE"]].push_back(record);
+    }
+}
+
 bool SVManager::writeVCF(void)
 {
     // merge to a single list
@@ -109,7 +189,7 @@ bool SVManager::writeVCF(void)
             itSV->format = "GT";
             itSV->qual = VcfRecord::MISSING_QUAL();
 
-               if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
+            if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
                 itSV->filter = VcfRecordEnhanced::STATUS_PASS();
             else if (itSV->status == VcfRecordEnhanced::STATUS::FILTERED)
                 itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
@@ -118,7 +198,8 @@ bool SVManager::writeVCF(void)
             else
                 itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
 
-            appendValue(itSV->genotypeInfos, "./.");
+            // hetero & not phased
+            appendValue(itSV->genotypeInfos, "1/0");
 
             // add
             vcfRecords.push_back(*itSV);
@@ -189,7 +270,7 @@ bool SVManager::findTranslocation(void)
         dupRemoveList.push_back(false);
 
     // sort duplications according to chromosome & positions
-    std::sort(this->sv[SVTYPE_DUPLICATION()].begin(), this->sv[SVTYPE_DUPLICATION()].end(), less_than_vcf());    
+    std::sort(this->sv[SVTYPE_DUPLICATION()].begin(), this->sv[SVTYPE_DUPLICATION()].end(), less_than_vcf());
     for (auto itDup = this->sv[SVTYPE_DUPLICATION()].begin(); itDup != this->sv[SVTYPE_DUPLICATION()].end(); ++itDup)
     {
         VcfRecordEnhanced record = *itDup;
@@ -858,4 +939,9 @@ uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = fa
             ++nCnt;
     }
     return nCnt;
+}
+
+bool SVManager::addSV(std::string& svType, VcfRecordEnhanced& record)
+{
+    sv[svType].push_back(record);
 }

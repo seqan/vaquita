@@ -31,12 +31,48 @@
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
-#ifndef APP_VAQUITA_H_
-#define APP_VAQUITA_H_
+#ifndef APP_SVMERGE_H_
+#define APP_SVMERGE_H_
 
-#define APP_NAME            "Vaquita"
-#define APP_TITLE           "Identification of Structural Variations using Combined Evidence"
-#define APP_COPYRIGHT       "Copyright 2017 by Jongkyu Kim."
-#define APP_AUTHOR_INFO     "Developed by Jongkyu Kim (MPI for Molecular Genetics & Free University Berlin)."
-#define APP_WEBSITE_INFO    "Please visit \\fIhttps://github.com/xenigmax/vaquita\\fP for more information."
-#endif // APP_VAQUITA_H_
+#include "sv.hpp"
+#include "mergeoption.hpp"
+
+
+class VcfRecordMultiSample : public VcfRecordEnhanced
+{
+    public :
+        TPosition   inBeginPos, outBeginPos;
+        TPosition   inEndPos, outEndPos;
+        TPosition   inTargetPos, outTargetPos;
+        double      minSC, maxSC;
+
+        std::vector<unsigned> recordNum;
+        std::vector<std::string> gt;
+        std::vector<unsigned> dp;
+};  
+
+
+class SVMerge
+{
+    private :
+        std::map<std::string, std::vector<VcfRecordMultiSample> >  mergedSV;
+        std::vector<SVManager>  svSet;
+        MergeOptionManager*     optionManager;
+        std::vector<std::string>   fileNames;
+        std::vector<std::string>   refNames;
+
+    public :
+        SVMerge(MergeOptionManager& om)
+        {
+            this->optionManager = &om;
+        }
+
+        bool loadVcf(std::string&);
+        bool loadVcfs(void);
+        bool loadVcfs(std::vector<std::string>&);
+        bool merge(void);
+        bool isReciOverlap(TPosition, TPosition, TPosition, TPosition, double);
+        bool writeVCF(void);
+};
+
+#endif // APP_SVMERGE_H_

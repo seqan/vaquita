@@ -31,12 +31,29 @@
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
-#ifndef APP_VAQUITA_H_
-#define APP_VAQUITA_H_
+#ifndef APP_MERGEOPTION_H_
+#define APP_MERGEOPTION_H_
 
-#define APP_NAME            "Vaquita"
-#define APP_TITLE           "Identification of Structural Variations using Combined Evidence"
-#define APP_COPYRIGHT       "Copyright 2017 by Jongkyu Kim."
-#define APP_AUTHOR_INFO     "Developed by Jongkyu Kim (MPI for Molecular Genetics & Free University Berlin)."
-#define APP_WEBSITE_INFO    "Please visit \\fIhttps://github.com/xenigmax/vaquita\\fP for more information."
-#endif // APP_VAQUITA_H_
+#include <seqan/sequence.h>
+#include <seqan/arg_parse.h>
+#include "misc.hpp"
+
+using namespace seqan;
+
+// ==========================================================================
+// Tags, Classes, Enums
+// ==========================================================================
+class MergeOptionManager : public ArgumentParser
+{
+    private :
+        std::vector<std::string> vcfFiles;
+        bool useAll;
+
+    public :
+        void init(void);
+        bool parseCommandLine(int argc, char const ** argv);
+        void printHelpMessage(void) { printHelp(*this); }
+        std::vector<std::string>& getVcfs(void) { return this->vcfFiles; }
+        bool getUseAll(void) { return this->useAll; }
+};
+#endif // APP_MERGEOPTION_H_
