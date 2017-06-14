@@ -891,6 +891,12 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         this->getOptionManager()->setMinVote(minVote);
     }
 
+    if (minVote == 1)
+    {
+        printTimeMessage("Voting based resecuing is disabled automatically.");
+        return true;
+    }
+
     // for all breakpoints
     unsigned filteredBreakpointCount = this->getMergedBreakpoint()->getFilteredBreakpointCount();
     TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
