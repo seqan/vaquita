@@ -89,7 +89,6 @@ class AlignmentManager
     	AlignmentManager(CallOptionManager & op) { init(op); }
         ~AlignmentManager() 
         {
-            // TODO : release memory! (TBamRecords)
             close(bamFileIn);
             close(*pBamFileOut);
         }

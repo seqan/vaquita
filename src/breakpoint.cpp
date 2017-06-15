@@ -816,6 +816,12 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         this->getOptionManager()->setMinVote(minVote);
     }
 
+    if (minVote == 1)
+    {
+        printTimeMessage("Voting based resecuing is disabled automatically.");
+        minVote = MaxValue<int32_t>::VALUE;
+    }
+
     TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     auto itBreakpoint = candidateSet->begin();
     unsigned filteredBreakpointCount = 0;
@@ -889,6 +895,12 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         if (this->getOptionManager()->doReadDepthAnalysis())
             ++minVote;
         this->getOptionManager()->setMinVote(minVote);
+    }
+
+    if (minVote == 1)
+    {
+        printTimeMessage("Voting based resecuing is disabled automatically.");
+        return true;
     }
 
     // for all breakpoints

@@ -68,3 +68,17 @@ void endTimeMessage(std::string msg)
     time(&_t2);
     printTimeMessage("[END] " + msg + " (" + std::to_string((int)difftime(_t2,_t1)) + " seconds.)");
 }
+
+
+void splitString(std::vector<std::string>& v, std::string& s, std::string& d)
+{
+    // split strings
+    size_t last = 0, next = 0;
+    v.clear();
+    while ((next = s.find(d, last)) != std::string::npos) 
+    { 
+        v.push_back(s.substr(last, next-last));
+        last = next + d.length();
+    }
+    v.push_back(s.substr(last));
+}

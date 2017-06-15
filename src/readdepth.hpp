@@ -34,7 +34,6 @@
 #ifndef APP_READ_DEPTH_H_
 #define APP_READ_DEPTH_H_
 
-#include <deque>
 #include "candidate.hpp"
 #include "intervalindex.hpp"
 

@@ -41,24 +41,25 @@
 class VcfRecordEnhanced : public VcfRecord
 {
     public :
-        TPosition endPos;
-        TPosition targetPos; // for duplications and translocations
-        char additionalInfo;
-        Breakpoint* breakpoint;
+        Breakpoint*     breakpoint = nullptr;
+        TPosition       endPos = 0;
+        TPosition       targetPos = 0;  // for duplications and translocations
+        std::string     chrName = "";   // optional for writing, necessary for loading
 
         // evidences        
-        unsigned se;
-        unsigned pe;
-        unsigned ce;
-        double re;
-        double sc;
-        double rd;
-        double gc;
-        double cp;
-        char vt;
+        unsigned se = 0;
+        unsigned pe = 0;
+        unsigned ce = 0;
+        double re = 0.0;
+        double sc = 0.0;
+        double rd = 0.0;
+        double gc = 0.0;
+        double cp = 0.0;
+        char vt = 0;
 
         char status = STATUS::PASS;
         bool imprecise = false; // do not have exact positions
+        unsigned additionalInfo = 0;
 
         enum STATUS {PASS=0, FILTERED=1, MERGED=2};
         static std::string STATUS_PASS(void) { return "PASS"; }
@@ -80,14 +81,14 @@ struct less_than_vcf
     }
 };
 
+typedef std::map<std::string, std::vector<VcfRecordEnhanced> >  TVcfBySVType;
 class SVManager
 {
     private :
         BreakpointManager* bpManager;
         CallOptionManager* opManager;
-        AlignmentManager*   alnManager;
-
-        std::map<std::string, std::vector<VcfRecordEnhanced> > sv;
+        AlignmentManager*  alnManager;
+        TVcfBySVType sv;
 
         bool findDeletion(void);
         bool findInversion(void);
@@ -99,11 +100,16 @@ class SVManager
         uint32_t getSVCount(std::string, bool);
 
     public :
+        SVManager() {}
         SVManager(BreakpointManager& bpm) 
         { 
             this->bpManager = &bpm;
             this->alnManager = bpm.getAlignmentManager();
             this->opManager = bpm.getOptionManager();
+        }
+        SVManager(std::string& fileName, bool useAll)
+        {
+            this->loadVcf(fileName, useAll);
         }
 
         bool findSV(void);
@@ -113,6 +119,7 @@ class SVManager
         bool orderSVByEvidenceSum(void);
         bool orderSVByRankAgg(void);
 
+        bool loadVcf(std::string&, bool);
         bool writeVCF(void);
         uint32_t getDeletionCount(void) { return getSVCount(SVTYPE_DELETION(), false); }
         uint32_t getInversionCount(void) { return getSVCount(SVTYPE_INVERSION(), false);  }
@@ -120,6 +127,9 @@ class SVManager
         uint32_t getTranslocationCount(void) { return getSVCount(SVTYPE_TRANSLOCATION(), false);  }
         uint32_t getBreakendCount(void) { return getSVCount(SVTYPE_BREAKEND(), false) / 2; } // always pairs.
         bool filterImpreciseDel(void);
+
+        TVcfBySVType& getVcfBySVType(void) { return this->sv; }
+        bool addSV(std::string&, VcfRecordEnhanced&);
 
         static std::string SVTYPE_DELETION(void) { return "DEL"; }
         static std::string SVTYPE_INVERSION(void) { return "INV"; }
