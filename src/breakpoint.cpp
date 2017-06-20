@@ -557,8 +557,13 @@ bool BreakpointManager::calculateReadDepth()
         ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(bp);
         FinalBreakpointInfo* finalBreakpoint = &this->finalBreakpoints[bp];
 
-        int32_t breakpointSize = abs(finalBreakpoint->rightPosition - finalBreakpoint->leftPosition) + 1;
         int32_t windowSize = this->getOptionManager()->getReadDepthWindowSize();
+        int32_t breakpointSize = 1;
+
+        if (finalBreakpoint->rightPosition > finalBreakpoint->leftPosition)
+          breakpointSize += (finalBreakpoint->rightPosition - finalBreakpoint->leftPosition);
+        else
+          breakpointSize += (finalBreakpoint->leftPosition - finalBreakpoint->rightPosition);
 
         // restrict the search region's size
         //if (breakpointSize > windowSize)

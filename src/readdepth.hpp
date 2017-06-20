@@ -77,7 +77,7 @@ class ReadDepth : public BreakpointCandidate
         double getReTH() { return reTH; }
         unsigned getRefSize(TTemplateID rid) { return readDepthInfo[rid].size(); }
 
-        double printDepth(TTemplateID templateID, TPosition position, TPosition windowSize);
+        void printDepth(TTemplateID templateID, TPosition position, TPosition windowSize);
 
         static bool isReadMatched(SequenceSegment* a, SequenceSegment* b) { return true; }
 };
