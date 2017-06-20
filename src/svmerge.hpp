@@ -31,48 +31,48 @@
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
-#include "vaquita.hpp"
-#include "option.hpp"
+#ifndef APP_SVMERGE_H_
+#define APP_SVMERGE_H_
 
-// ============================================================================
-// Functions
-// ============================================================================
+#include "sv.hpp"
+#include "mergeoption.hpp"
 
-void OptionManager::init()
+
+class VcfRecordMultiSample : public VcfRecordEnhanced
 {
-    setAppName(*this, APP_NAME);
-    setShortDescription(*this, "Possible commands");
+    public :
+        TPosition   inBeginPos, outBeginPos;
+        TPosition   inEndPos, outEndPos;
+        TPosition   inTargetPos, outTargetPos;
+        double      minSC, maxSC;
 
-    // version & date
-    setVersion(*this, SEQAN_APP_VERSION);
-    setDate(*this, SEQAN_DATE);
+        std::vector<unsigned> recordNum;
+        std::vector<std::string> gt;
+        std::vector<unsigned> dp;
+};  
 
-    addDescription(*this, std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
-    addDescription(*this, std::string(APP_AUTHOR_INFO));
-    addDescription(*this, std::string(APP_WEBSITE_INFO));
 
-    // synopsis
-    addUsageLine(*this, "[\\fICOMMAND\\fP] [\\fIARGUMENTS\\fP]");
-
-    // commands
-    addTextSection(*this, "Command");
-    addListItem(*this, "\\fBcall\\fP", "Identify structural variations in a single .bam file.");
-    addListItem(*this, "\\fBmerge\\fP", "Merge multilple .vcf files into a single file for multisample genotyping.");
-
-    // mandatory arguments
-    ArgParseArgument arg(ArgParseArgument::STRING, "COMMAND");
-    setValidValues(arg, "call merge");
-    addArgument(*this, arg);
-    setHelpText(*this, 0, "Support : call, merge");
-}
-
-bool OptionManager::parseCommandLine(int argc, char const ** argv)
+class SVMerge
 {
-    ArgumentParser::ParseResult res = parse(*this, argc, argv);
-    if (res != ArgumentParser::PARSE_OK)
-        return false;
+    private :
+        std::map<std::string, std::vector<VcfRecordMultiSample> >  mergedSV;
+        std::vector<SVManager>  svSet;
+        MergeOptionManager*     optionManager;
+        std::vector<std::string>   fileNames;
+        std::vector<std::string>   refNames;
 
-    getArgumentValue(this->command, *this, 0);
+    public :
+        SVMerge(MergeOptionManager& om)
+        {
+            this->optionManager = &om;
+        }
 
-    return true;
-}
+        bool loadVcf(std::string&);
+        bool loadVcfs(void);
+        bool loadVcfs(std::vector<std::string>&);
+        bool merge(void);
+        bool isReciOverlap(TPosition, TPosition, TPosition, TPosition, double);
+        bool writeVCF(void);
+};
+
+#endif // APP_SVMERGE_H_

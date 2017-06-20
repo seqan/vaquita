@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -230,7 +230,7 @@ void ReadDepth::getReadDepthDiffScore(double& score, double& depth, TTemplateID 
 {
     double leftDepthAvg, rightDepthAvg;
 
-    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t, p, windowSize, windowSize, BreakpointCandidate::SIDE::LEFT);
+    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t, p, windowSize, windowSize, BreakpointEvidence::SIDE::LEFT);
     if (leftDepthAvg > rightDepthAvg)
         score = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
     else
@@ -243,7 +243,7 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
     double outerDepthAvg, leftDepthAvg, rightDepthAvg;
 
     // left
-    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t1, p1, windowSize, breakpointSize, BreakpointCandidate::SIDE::LEFT);
+    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t1, p1, windowSize, breakpointSize, BreakpointEvidence::SIDE::LEFT);
     leftOuterDepthAvg = leftDepthAvg;
     if (leftDepthAvg > rightDepthAvg)
         leftScore = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
@@ -251,7 +251,7 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
         leftScore = getKLScore(rightDepthAvg, leftDepthAvg); // / rightDepthAvg;
 
     // right
-    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t2, p2, windowSize, breakpointSize, BreakpointCandidate::SIDE::RIGHT);
+    getAvgReadDepth(leftDepthAvg, rightDepthAvg, t2, p2, windowSize, breakpointSize, BreakpointEvidence::SIDE::RIGHT);
     rightOuterDepthAvg = rightDepthAvg;
     if (leftDepthAvg > rightDepthAvg)
         rightScore = getKLScore(leftDepthAvg, rightDepthAvg); // / leftDepthAvg;
@@ -259,7 +259,7 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
         rightScore = getKLScore(rightDepthAvg, leftDepthAvg); // / rightDepthAvg;
 }
 
-void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointCandidate::SIDE side)
+void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointEvidence::SIDE side)
 {
     if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || readDepthInfo[templateID].size() == 0)
     {
@@ -272,7 +272,7 @@ void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID t
         position = readDepthInfo[templateID].size() - 1;
 
     TPosition begin, end;
-    if (side == BreakpointCandidate::SIDE::LEFT)    
+    if (side == BreakpointEvidence::SIDE::LEFT)    
     {
         if (position > windowSize)
             begin = position - windowSize;

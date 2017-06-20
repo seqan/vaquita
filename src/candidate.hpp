@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 #include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
-#include "option.hpp"
+#include "calloption.hpp"
 #include "intervalindex.hpp"
 
 using namespace seqan;
@@ -51,12 +51,14 @@ using namespace seqan;
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-typedef uint8_t                 TTemplateID;
-typedef uint32_t                TPosition;
-typedef CharString              TReadName;
-typedef uint32_t                TReadID;
-typedef bool                    TStrand;
-typedef std::vector<TPosition>  TPositionList;
+typedef uint8_t                         TTemplateID;
+typedef uint32_t                        TPosition;
+typedef uint16_t                        TRelativePosition;
+typedef CharString                      TReadName;
+typedef uint32_t                        TReadID;
+typedef bool                            TStrand;
+typedef std::vector<TPosition>          TPositionList;
+typedef std::vector<TRelativePosition>  TRelativePositionList;
 
 struct SequenceSegment
 {
@@ -72,8 +74,9 @@ struct BreakpointEvidence
     static TTemplateID const NOVEL_TEMPLATE = MaxValue<TTemplateID>::VALUE;
 
     // P.: -><-, S.: <-->, I.: ->->, LEFT/RIGHT CLIP : temporary use.
-    enum ORIENTATION {PROPERLY_ORIENTED_LARGE=0, PROPERLY_ORIENTED_SMALL=1, SWAPPED=2, INVERTED=3, NOT_DECIDED=4, NUM_OF_ORIENTATION=5};
-    
+    enum ORIENTATION {PROPERLY_ORIENTED_LARGE=0, PROPERLY_ORIENTED_SMALL=1, SWAPPED=2, INVERTED=3, NOT_DECIDED=4, CLIPPED=5, NUM_OF_ORIENTATION=6};
+    enum SIDE {LEFT, RIGHT, BOTH};
+
     SequenceSegment leftSegment, rightSegment;
     TReadID suppRead;
     DnaString sequence; // eg. clipped sequence
@@ -88,26 +91,27 @@ struct AlignmentInfo
 };
 
 typedef std::vector<std::pair<TPosition, DnaString> >              TClippedSequences;
-struct Breakpoint
+class Breakpoint
 {  
-    TTemplateID leftTemplateID, rightTemplateID;
-    TStrand leftReverseFlag, rightReverseFlag;
-    BreakpointEvidence::ORIENTATION orientation;
+    public :
+        TTemplateID leftTemplateID, rightTemplateID;
+        TStrand leftReverseFlag, rightReverseFlag;
+        BreakpointEvidence::ORIENTATION orientation;
 
-    // candidate positions
-    TPositionList   leftPos, rightPos;
-    TPosition       minLeftPos, maxLeftPos, minRightPos, maxRightPos;
+        // candidate positions
+        TPosition       minLeftPos, maxLeftPos, minRightPos, maxRightPos;
+        TPositionList   leftPos, rightPos;
 
-    // supporting reads
-    uint16_t suppReads;
+        // supporting reads
+        uint16_t suppReads;
 
-    // clipped sequences
-    TClippedSequences clippedSequences;
-    TPosition clippedConsensusSequenceSize = 0;
+        // clipped sequences
+        TClippedSequences clippedSequences;
+        TPosition clippedConsensusSequenceSize = 0;
 
-    bool needLeftIndexUpdate = false;
-    bool needRightIndexUpdate = false;
-    bool bFoundExactPosition = false;
+        bool needLeftIndexUpdate = false;
+        bool needRightIndexUpdate = false;
+        bool bFoundExactPosition = false;
 };
 
 typedef String<Breakpoint*>                                         TBreakpointList;
@@ -117,6 +121,9 @@ typedef std::pair<std::pair<TPosition, TPosition>, Breakpoint*>     TPosBreakpoi
 typedef std::vector<TPosBreakpoint>                                 TPosBreakpointVector;
 typedef std::map<TPosition, TPosBreakpointVector*>                  TBreakpointBinIndex;
 typedef std::map<TTemplateID, TBreakpointBinIndex>                  TBreakpointIndex; 
+
+typedef IntervalIndex<Breakpoint*>  TBreakpointIntervalIndex;
+typedef std::map<TTemplateID, TBreakpointIntervalIndex*>     TBreakpointIntervalIndexMap;
 
 class BreakpointCandidate
 {
@@ -130,23 +137,18 @@ class BreakpointCandidate
         double maxAbInsSize;
         double minAbInsSize;
 
-        OptionManager* op;
-        
+        CallOptionManager* op;
+        TBreakpointIntervalIndexMap leftIndexMap, rightIndexMap;
         TBreakpointSet     breakpoints;
-        TBreakpointIndex   leftBpIndex, rightBpIndex;
-                
-        void setPositionWithAdj(TPosition &, TPosition &);
-        void addBreakpoint(Breakpoint*); // addition of a new breakpoint
 
-        void getIndex(TBreakpointBinIndex**, TBreakpointBinIndex**, Breakpoint*);
-        void addIndex(TBreakpointBinIndex*, TPosition, TPosition, Breakpoint*);
-        void removeIndex(TBreakpointBinIndex*, TPosition, TPosition, Breakpoint*);
-        void findOverlap(TBreakpointSet&, TBreakpointBinIndex*, TPosition, TPosition, BreakpointEvidence::ORIENTATION, bool);
+        void setPositionWithAdj(TPosition &, TPosition &);
+
+        TBreakpointIntervalIndex* getIndex(BreakpointEvidence::SIDE, TTemplateID);
+        bool addIndex(TBreakpointIntervalIndex*, TPosition, TPosition, Breakpoint*);
+        bool removeIndex(TBreakpointIntervalIndex*, TPosition, TPosition, Breakpoint*);
 
     public :
-        enum SIDE {LEFT, RIGHT, BOTH};
-
-        BreakpointCandidate();
+        BreakpointCandidate(CallOptionManager*);
         ~BreakpointCandidate();
        
         void setPositionalAdj(int32_t a) { this->posAdj = a; }
@@ -160,8 +162,8 @@ class BreakpointCandidate
         double getMinAbInsSize() { return minAbInsSize; }
 
         // options
-        void setOptionManager(OptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
-        OptionManager* getOptionManager(void) { return this->op; }
+        void setOptionManager(CallOptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
+        CallOptionManager* getOptionManager(void) { return this->op; }
         int32_t getBreakpointCount(void) { return this->breakpoints.size(); }
                         
         // operations for breakpoints
@@ -169,15 +171,16 @@ class BreakpointCandidate
         TReadID getNextReadID(void) { this->currentReadID++; }
 
         std::set<Breakpoint*>* getCandidateSet() { return &this->breakpoints; }     // GET candidate set
-        void findMatchedBreakpoint(TBreakpointSet&, TBreakpointSet&, Breakpoint*, bool checkOrientation=true);  // FIND matched breakpoints
-        void findMatchedBreakpoint(TBreakpointSet&, TBreakpointSet&, TBreakpointSet&, Breakpoint*, bool checkBothSide=true);
+
+        void addNewBreakpoint(Breakpoint*); // addition of a new breakpoint
+        void findBreakpoint(TBreakpointSet&, TBreakpointSet&, TBreakpointSet&, Breakpoint*); 
 
         Breakpoint* copyAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
         Breakpoint* moveAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
         TBreakpointSet::iterator mergeBreakpoint(Breakpoint*, Breakpoint*);         // MERGE two breakpoints
         TBreakpointSet::iterator removeBreakpoint(TBreakpointSet::iterator);        // REMOVE breakpoints
-        Breakpoint* updateBreakpoint(Breakpoint*, bool, bool&);  // UPDATE breakpoints including adjustment of indicies
-        Breakpoint* updateBreakpoint(BreakpointEvidence&, bool, bool&);
+        Breakpoint* updateBreakpoint(Breakpoint*, bool&);  // UPDATE breakpoints including adjustment of indicies
+        Breakpoint* updateBreakpoint(BreakpointEvidence&, bool&);
         void updateBreakpointIndex(Breakpoint*);                                    // UPDATE index only
         TBreakpointSet::iterator removeBreakpoint(Breakpoint*);
         
@@ -196,7 +199,7 @@ class BreakpointCandidate
         static bool isOverlap(TPosition, TPosition, TPosition, TPosition);                 
         static bool isAdjacent(TPosition, TPosition, TPosition, TPosition, TPosition);
         static bool isAdjacent(TPosition, TPosition, TPosition);
-        static void setPositionWithAdj(TPosition &, TPosition &, TPosition);          // make extended intervals using positional adjancy
+        static void setPositionWithAdj(TPosition &, TPosition &, TPosition);        // make extended intervals using positional adjancy
         static void printBreakpoint(Breakpoint*);                                   // print breakpoints to stderr
         static void printBreakpoint(Breakpoint&);
         static void copyBreakpoint(Breakpoint&, Breakpoint&);                       // copy breakpoint
@@ -206,10 +209,12 @@ class BreakpointCandidate
         static bool compareByQueryPos(AlignmentInfo&, AlignmentInfo&);              // for ordering with sorting function
         static bool compareByChrmAndPos(Breakpoint&, Breakpoint&);                  // for ordering with sorting function
         static bool isMatchedBreakpoint(Breakpoint*, Breakpoint*);
-        static void updateLeftMinMaxPos(Breakpoint*);
-        static void updateRightMinMaxPos(Breakpoint*);
         static void clearPosInfo(Breakpoint*);
         static double PREVENT_DIV_BY_ZERO(void) { return 0.0000000001; }
+
+        static void updateMinMaxPos(Breakpoint*);
+        static void updateLeftMinMaxPos(Breakpoint*);
+        static void updateRightMinMaxPos(Breakpoint*);
 };
 
 #endif // APP_BREAKPOINTCANDIDATE_H_

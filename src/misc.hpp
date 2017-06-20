@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@
 #ifndef APP_MISC_H_
 #define APP_MISC_H_
 
+#include <vector>
 #include <string>
 #include <ctime>
 
@@ -44,9 +45,6 @@
 #define RUN(x, y, z)                        {startTimeMessage(y);(x=z);endTimeMessage(y);}
 #define CharStringToStdString(x)            std::string(toCString(x))
 
-#define IS_ADJACENT(p1, p2, tol)            ( ((p2 >= p1) && (p2 - p1) <= tol) || ((p1 > p2) && (p1-p2) <= tol) )
-#define IS_OVERLAP(b1, e1, b2, e2)          (b1 <= e2 && b2 <= e1)
-
 // ==========================================================================
 // Functions
 // ==========================================================================
@@ -54,5 +52,5 @@ void printMessage(std::string);
 void printTimeMessage(std::string);
 void startTimeMessage(std::string);
 void endTimeMessage(std::string);
-
+void splitString(std::vector<std::string>&, std::string&, std::string&);
 #endif // APP_MISC_H_

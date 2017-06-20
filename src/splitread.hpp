@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -34,9 +34,9 @@
 #ifndef APP_SPLITREAD_H_
 #define APP_SPLITREAD_H_
 
-#include "candidate.hpp"
 #include <map>
 #include <vector>
+#include "candidate.hpp"
 
 typedef std::vector<BamAlignmentRecord> TBamRecords;
 typedef std::map<TReadName, TBamRecords> TReadAlignment;
@@ -52,6 +52,8 @@ class SplitRead : public BreakpointCandidate
         bool updateBreakpointByIndels(std::vector<BreakpointEvidence>&);
 
     public:
+        SplitRead(CallOptionManager* o):BreakpointCandidate(o) {};
+
         bool analyze(void);
         bool analyzeRead(TReadName&);
         bool analyzeCurrentChromosome();

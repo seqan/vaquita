@@ -32,16 +32,16 @@
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
 #include "vaquita.hpp"
-#include "option.hpp"
+#include "mergeoption.hpp"
 
 // ============================================================================
 // Functions
 // ============================================================================
 
-void OptionManager::init()
+void MergeOptionManager::init()
 {
-    setAppName(*this, APP_NAME);
-    setShortDescription(*this, "Possible commands");
+    setAppName(*this, APP_NAME + std::string(" merge"));
+    setShortDescription(*this, "Merging mode");
 
     // version & date
     setVersion(*this, SEQAN_APP_VERSION);
@@ -52,27 +52,42 @@ void OptionManager::init()
     addDescription(*this, std::string(APP_WEBSITE_INFO));
 
     // synopsis
-    addUsageLine(*this, "[\\fICOMMAND\\fP] [\\fIARGUMENTS\\fP]");
+    addUsageLine(*this, "[\\fIOPTIONS\\fP] [\\fIin_1.vcf\\fP, .. ,\\fIin_N.vcf\\fP] > [\\fIout.vcf\\fP]");
 
-    // commands
-    addTextSection(*this, "Command");
-    addListItem(*this, "\\fBcall\\fP", "Identify structural variations in a single .bam file.");
-    addListItem(*this, "\\fBmerge\\fP", "Merge multilple .vcf files into a single file for multisample genotyping.");
+    // options
+    addOption(*this, ArgParseOption("", "use-all", "Consider all records. (Default: Consider SVs with 'PASS' in the filter column.)"));
+    setDefaultValue(*this, "use-all", "false");
 
-    // mandatory arguments
-    ArgParseArgument arg(ArgParseArgument::STRING, "COMMAND");
-    setValidValues(arg, "call merge");
+    // files
+    ArgParseArgument arg(ArgParseArgument::STRING, "INPUT");
     addArgument(*this, arg);
-    setHelpText(*this, 0, "Support : call, merge");
 }
 
-bool OptionManager::parseCommandLine(int argc, char const ** argv)
+bool MergeOptionManager::parseCommandLine(int argc, char const ** argv)
 {
     ArgumentParser::ParseResult res = parse(*this, argc, argv);
     if (res != ArgumentParser::PARSE_OK)
         return false;
 
-    getArgumentValue(this->command, *this, 0);
+    CharString vcfFileString;    
+    getArgumentValue(vcfFileString, *this, 0);
+
+    // split strings
+    std::string s = CharStringToStdString(vcfFileString), d = ",";
+    splitString(this->vcfFiles, s, d);
+
+    // extention check
+    for (unsigned i=0; i < this->vcfFiles.size(); ++i)
+    {
+        std::string ext = this->vcfFiles[i].substr(this->vcfFiles[i].length()-4);
+        if (ext != ".vcf")
+        {
+            std::cerr << "Unknown file extention: " << ext << " (" << this->vcfFiles[i] << ")\n";
+            return false;
+        }
+    }
+
+    this->useAll = isSet(*this, "use-all");
 
     return true;
 }

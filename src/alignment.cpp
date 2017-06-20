@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -98,11 +98,7 @@ bool AlignmentManager::load(void)
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
 
-            //if (record.rID > 46)
-            //    break;
-            
             // discards low quality reads, secondary mappings
-            //if (hasFlagUnmapped(record) || record.mapQ < minMapQual || hasFlagQCNoPass(record) || hasFlagSecondary(record))
             if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
                 continue;
 

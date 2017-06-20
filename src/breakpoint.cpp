@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -45,23 +45,29 @@ bool BreakpointManager::merge(void)
     bool result = false;
 
     RUN(result,"From split-read evidences.", mergeSplitRead());    
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+    printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
     if (this->optionManager->doPairedEndAnalysis())
+    {
         RUN(result,"From read-pair evidences.", mergePairedEnd());
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+        printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
+    }
 
     if (this->optionManager->doClippedReadAnalysis())
+    {
         RUN(result,"From soft-clipped evidences.", mergeClippedRead());
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+        printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
+    }
 
     // 2) add imprecise breakpoints
     if (this->optionManager->doPairedEndAnalysis())
+    {
         RUN(result,"Add imprecise breakpoints to the merged set.", addImpreciseBreakpoints());
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+        printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
+    }
 
     // 3) get final positions
     RUN(result,"Get final breakpoints.", findFinalBreakpoints());
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+    printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
 
     // 4) add read-depth based information (needs final breakpoints)
     if (this->optionManager->doReadDepthAnalysis())
@@ -71,25 +77,22 @@ bool BreakpointManager::merge(void)
     if (this->optionManager->doClippedReadAnalysis())
         RUN(result,"Get sequence information.", getSequenceFeature());
 
-    printTimeMessage("Total breakpoints: " + std::to_string(this->mergedBreakpoints.getBreakpointCount()));
+    printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
 }
 
 bool BreakpointManager::mergeSplitRead(void)
 {
     // split-read
-    TBreakpointSet* breakpoints = this->splitReadBreakpoints.getCandidateSet();
+    TBreakpointSet* breakpoints = this->getSplitRead()->getCandidateSet();
     auto itBreakpoint = breakpoints->begin();;
     while ( itBreakpoint != breakpoints->end() )
     {
         bool isNew;
-        Breakpoint* mergedBp = this->mergedBreakpoints.moveAndUpdateBreakpoint(*itBreakpoint, isNew);
-        ReadSupportInfo* mergedReadInfo = this->mergedBreakpoints.getReadSupport(mergedBp);
-
+        Breakpoint* mergedBp = this->getMergedBreakpoint()->moveAndUpdateBreakpoint(*itBreakpoint, isNew);
+        ReadSupportInfo* mergedReadInfo = this->getMergedBreakpoint()->initReadSupport(mergedBp);
         mergedReadInfo->splitReadSupport = mergedBp->suppReads;
-        mergedReadInfo->pairedEndSupport = 0;
-        mergedReadInfo->clippedReadSupport = 0;
 
-        itBreakpoint = this->splitReadBreakpoints.removeBreakpoint(*itBreakpoint);
+        itBreakpoint = this->getSplitRead()->removeBreakpoint(*itBreakpoint);
     }
 
     return true;
@@ -98,14 +101,14 @@ bool BreakpointManager::mergeSplitRead(void)
 bool BreakpointManager::mergePairedEnd(void)
 {    
     // paired-end
-    TBreakpointSet* breakpoints = this->pairedEndBreakpoints.getCandidateSet();
+    TBreakpointSet* breakpoints = this->getPairedEndRead()->getCandidateSet();
     auto itBreakpoint = breakpoints->begin();;
     while ( itBreakpoint != breakpoints->end() )
     {
         Breakpoint* currentBp = *itBreakpoint;
    
         TBreakpointSet leftMatched, rightMatched, bpEquivalent;
-        this->mergedBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, bpEquivalent, currentBp, true);
+        this->getMergedBreakpoint()->findBreakpoint(leftMatched, rightMatched, bpEquivalent, currentBp);
 
         // found matches
         if (bpEquivalent.size() > 0)
@@ -113,23 +116,21 @@ bool BreakpointManager::mergePairedEnd(void)
             // representative bp
             auto itEq = bpEquivalent.begin();
             Breakpoint* destBp = *(itEq++);
-            ReadSupportInfo* mergedReadInfo = this->mergedBreakpoints.getReadSupport(destBp);
+            ReadSupportInfo* mergedReadInfo = this->getMergedBreakpoint()->getReadSupport(destBp);
 
             // merge curret paired-end bp without positional info.
-            BreakpointCandidate::clearPosInfo(currentBp);
-            this->mergedBreakpoints.mergeBreakpoint(destBp, currentBp);
+            destBp->suppReads += currentBp->suppReads;
             mergedReadInfo->pairedEndSupport += currentBp->suppReads;
 
             // merge others that are linked by this paired-end bp
             for (; itEq != bpEquivalent.end(); ++itEq)
-                this->mergedBreakpoints.mergeBreakpoint(destBp, *itEq);
+                this->getMergedBreakpoint()->mergeBreakpoint(destBp, *itEq);
 
             // update index
-            this->mergedBreakpoints.updateBreakpointIndex(destBp);
+            this->getMergedBreakpoint()->updateBreakpointIndex(destBp);
 
             // marking this BP 
-            this->pairedEndBreakpoints.setBreakpointUsed(currentBp, true);
-            itBreakpoint = this->pairedEndBreakpoints.removeBreakpoint(currentBp);
+            itBreakpoint = this->getPairedEndRead()->removeBreakpoint(currentBp);
         }
         else // This BP will get a second chance in "addImpreciseBreakpoints"
             ++itBreakpoint;
@@ -141,8 +142,8 @@ bool BreakpointManager::mergePairedEnd(void)
 bool BreakpointManager::mergeClippedRead(void)
 {
     // 1) clipped-read
-    TBreakpointSet leftMatched, rightMatched;
-    TBreakpointSet* breakpoints = this->clippedBreakpoints.getCandidateSet();
+    TBreakpointSet leftMatched, rightMatched, bothMatched;
+    TBreakpointSet* breakpoints = this->getClippedRead()->getCandidateSet();
     auto itBreakpoint= breakpoints->begin();
     while ( itBreakpoint != breakpoints->end() )
     {
@@ -160,13 +161,14 @@ bool BreakpointManager::mergeClippedRead(void)
 
         leftMatched.clear();
         rightMatched.clear();
-        this->mergedBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, currentBp, false);
-        this->pairedEndBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, currentBp, false);
+        bothMatched.clear();
+        this->getMergedBreakpoint()->findBreakpoint(leftMatched, rightMatched, bothMatched, currentBp);
+        this->getPairedEndRead()->findBreakpoint(leftMatched, rightMatched, bothMatched, currentBp);
 
         // 1. check pre-defined regions
-        if ( rightMatched.size() > 0 || leftMatched.size() > 0)
+        if ( leftMatched.size() > 0 || rightMatched.size() > 0)
         {
-            this->clippedBreakpoints.getConsensusSequence(clipSeq, currentBp);
+            this->getClippedRead()->getConsensusSequence(clipSeq, currentBp);
             bestMatchScore = -(this->optionManager->getClippedSeqErrorRate() * length(clipSeq));
 
             if (isLeftClip == true)
@@ -176,11 +178,11 @@ bool BreakpointManager::mergeClippedRead(void)
                 {
                     if ((*itBp)->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
                     {
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    clipSeq, \
-                                                                   ClippedRead::SIDE::LEFT, \
+                                                                   BreakpointEvidence::SIDE::LEFT, \
                                                                    false, \
                                                                    false, \
                                                                    BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
@@ -192,11 +194,11 @@ bool BreakpointManager::mergeClippedRead(void)
                             revCompClipSeq = clipSeq;
                             reverseComplement(revCompClipSeq);
                         }
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    revCompClipSeq, \
-                                                                   ClippedRead::SIDE::LEFT, \
+                                                                   BreakpointEvidence::SIDE::LEFT, \
                                                                    false, \
                                                                    true, \
                                                                    BreakpointEvidence::ORIENTATION::INVERTED);
@@ -210,11 +212,11 @@ bool BreakpointManager::mergeClippedRead(void)
                 {
                     if ((*itBp)->orientation == BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
                     {
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    clipSeq, \
-                                                                   ClippedRead::SIDE::RIGHT, \
+                                                                   BreakpointEvidence::SIDE::RIGHT, \
                                                                    false, \
                                                                    false, \
                                                                    BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
@@ -226,11 +228,11 @@ bool BreakpointManager::mergeClippedRead(void)
                             revCompClipSeq = clipSeq;
                             reverseComplement(revCompClipSeq);
                         }
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    revCompClipSeq, \
-                                                                   ClippedRead::SIDE::RIGHT, \
+                                                                   BreakpointEvidence::SIDE::RIGHT, \
                                                                    false, \
                                                                    true, \
                                                                    BreakpointEvidence::ORIENTATION::INVERTED);
@@ -244,14 +246,30 @@ bool BreakpointManager::mergeClippedRead(void)
         {
             if (clipSeq == "")
             {
-                this->clippedBreakpoints.getConsensusSequence(clipSeq, currentBp);
+                this->getClippedRead()->getConsensusSequence(clipSeq, currentBp);
                 bestMatchScore = -(this->optionManager->getClippedSeqErrorRate() * length(clipSeq));
             }
 
             if (isLeftClip == true)
-                this->clippedBreakpoints.searchTwilightZone(foundPositions, currentBp, bestMatchScore, clipSeq, ClippedRead::SIDE::LEFT, false, BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
+            {
+                this->getClippedRead()->searchTwilightZone(foundPositions, \
+                                                           currentBp, \
+                                                           bestMatchScore, \
+                                                           clipSeq, \
+                                                           BreakpointEvidence::SIDE::LEFT, \
+                                                           false, 
+                                                           BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
+            }
             else
-                this->clippedBreakpoints.searchTwilightZone(foundPositions, currentBp, bestMatchScore, clipSeq, ClippedRead::SIDE::RIGHT, false, BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
+            {
+                this->getClippedRead()->searchTwilightZone(foundPositions, \
+                                                           currentBp, \
+                                                           bestMatchScore, \
+                                                           clipSeq, \
+                                                           BreakpointEvidence::SIDE::RIGHT, \
+                                                           false, \
+                                                           BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE);
+            }
         }
 
         // 3. swap and search
@@ -265,8 +283,9 @@ bool BreakpointManager::mergeClippedRead(void)
 
             leftMatched.clear();
             rightMatched.clear();
-            this->mergedBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, currentBp, false);        
-            this->pairedEndBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, currentBp, false);
+            bothMatched.clear();
+            this->getMergedBreakpoint()->findBreakpoint(leftMatched, rightMatched, bothMatched, currentBp);
+            this->getPairedEndRead()->findBreakpoint(leftMatched, rightMatched, bothMatched, currentBp);
             
             // left clip & left match (swap)
             bool foundInvBySwap = false;
@@ -276,11 +295,11 @@ bool BreakpointManager::mergeClippedRead(void)
                 {
                     if ((*itBp)->orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
                     {
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    clipSeq, \
-                                                                   ClippedRead::SIDE::RIGHT, \
+                                                                   BreakpointEvidence::SIDE::RIGHT, \
                                                                    false, \
                                                                    false, \
                                                                    BreakpointEvidence::ORIENTATION::SWAPPED);
@@ -292,11 +311,11 @@ bool BreakpointManager::mergeClippedRead(void)
                             revCompClipSeq = clipSeq;
                             reverseComplement(revCompClipSeq);
                         }
-                        foundInvBySwap |= this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        foundInvBySwap |= this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    revCompClipSeq, \
-                                                                   ClippedRead::SIDE::RIGHT, \
+                                                                   BreakpointEvidence::SIDE::RIGHT, \
                                                                    false, \
                                                                    true, \
                                                                    BreakpointEvidence::ORIENTATION::INVERTED);
@@ -309,11 +328,11 @@ bool BreakpointManager::mergeClippedRead(void)
                 {
                     if ((*itBp)->orientation == BreakpointEvidence::ORIENTATION::SWAPPED)
                     {
-                        this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    clipSeq, \
-                                                                   ClippedRead::SIDE::LEFT, \
+                                                                   BreakpointEvidence::SIDE::LEFT, \
                                                                    false, \
                                                                    false, \
                                                                    BreakpointEvidence::ORIENTATION::SWAPPED);
@@ -325,17 +344,18 @@ bool BreakpointManager::mergeClippedRead(void)
                             revCompClipSeq = clipSeq;
                             reverseComplement(revCompClipSeq);
                         }
-                        foundInvBySwap |= this->clippedBreakpoints.searchPairRegion( foundPositions, \
+                        foundInvBySwap |= this->getClippedRead()->searchPairRegion( foundPositions, \
                                                                    *itBp, \
                                                                    bestMatchScore, \
                                                                    revCompClipSeq, \
-                                                                   ClippedRead::SIDE::LEFT, \
+                                                                   BreakpointEvidence::SIDE::LEFT, \
                                                                    false, \
                                                                    true, \
                                                                    BreakpointEvidence::ORIENTATION::INVERTED);
                     }
                 }
             }
+
             // found inversion by swapping
             if (foundInvBySwap)
                 isLeftClip = !isLeftClip;
@@ -345,8 +365,9 @@ bool BreakpointManager::mergeClippedRead(void)
         if (foundPositions.size() > 0)
             addNewPositionsByClippedSequence(foundPositions, currentBp, isLeftClip);
 
-        itBreakpoint = this->clippedBreakpoints.removeBreakpoint(currentBp);
+        itBreakpoint = this->getClippedRead()->removeBreakpoint(currentBp);
     }
+
     return true;
 }
 
@@ -384,7 +405,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 // update depth
                 if (this->optionManager->doReadDepthAnalysis())
                 {
-                    this->readDepthBreakpoints.addUniformDepth(newBp->rightTemplateID, \
+                    this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                newPos, \
                                                                newBp->clippedConsensusSequenceSize,
                                                                newBp->suppReads);
@@ -408,7 +429,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 // update depth
                 if (this->optionManager->doReadDepthAnalysis())
                 {
-                    this->readDepthBreakpoints.addUniformDepth(newBp->leftTemplateID, \
+                    this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                newPos, \
                                                                newBp->clippedConsensusSequenceSize,
                                                                newBp->suppReads);
@@ -447,7 +468,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     // update depth
                     if (this->optionManager->doReadDepthAnalysis())
                     {
-                        this->readDepthBreakpoints.addUniformDepth(newBp->leftTemplateID, \
+                        this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                    newPos, \
                                                                    newBp->clippedConsensusSequenceSize,
                                                                    newBp->suppReads);
@@ -483,7 +504,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     // update depth
                     if (this->optionManager->doReadDepthAnalysis())
                     {
-                        this->readDepthBreakpoints.addUniformDepth(newBp->rightTemplateID, \
+                        this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                    newPos, \
                                                                    newBp->clippedConsensusSequenceSize,
                                                                    newBp->suppReads);
@@ -496,24 +517,26 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
         // update
         if (newPos != BreakpointEvidence::INVALID_POS)
         {
+
+            // update supporting read information
+            ReadSupportInfo* newReadInfo = this->getMergedBreakpoint()->initReadSupport(newBp);
+            newReadInfo->clippedReadSupport += clippedBp->suppReads;
+
             // add to the merged set
             bool isNewBp = false;
             newBp->needLeftIndexUpdate = true;
             newBp->needRightIndexUpdate = true;
-            newBp = this->mergedBreakpoints.updateBreakpoint(newBp, true, isNewBp);
+            newBp = this->getMergedBreakpoint()->updateBreakpoint(newBp, isNewBp);
 
-            // update supporting read information
-            ReadSupportInfo* newReadInfo = this->mergedBreakpoints.getReadSupport(newBp);
-            newReadInfo->clippedReadSupport += clippedBp->suppReads;
-
-            // new bp : based on read-pairs or twilight zone (one-side has to be the novel_template)
+            // new bp : based on read-pairs or twilight zone
             if (isNewBp == true)
             {
                 // based on read-pairs
+                // - twilight zone: one-side has to be the novel_template
                 if (itFound->matchedLeftTemplateID != BreakpointEvidence::NOVEL_TEMPLATE && \
                     itFound->matchedRightTemplateID != BreakpointEvidence::NOVEL_TEMPLATE)
                 {
-                    this->pairedEndBreakpoints.setBreakpointUsed(matchedBp, true);
+                    this->getPairedEndRead()->setBreakpointUsed(matchedBp, true);
                     newBp->suppReads += matchedBp->suppReads;
                     newReadInfo->pairedEndSupport += matchedBp->suppReads;
                 }
@@ -524,16 +547,16 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
 
 bool BreakpointManager::calculateReadDepth()
 {
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     std::map<TTemplateID, unsigned> svCntByTemplate;
     for(auto it = candidateSet->begin(); it != candidateSet->end(); ++it)
     {
         Breakpoint* bp = *it;
-        ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(bp);
+        ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(bp);
         FinalBreakpointInfo* finalBreakpoint = &this->finalBreakpoints[bp];
 
         int32_t breakpointSize = abs(finalBreakpoint->rightPosition - finalBreakpoint->leftPosition) + 1;
-        int32_t windowSize = this->optionManager->getReadDepthWindowSize();
+        int32_t windowSize = this->getOptionManager()->getReadDepthWindowSize();
 
         // restrict the search region's size
         //if (breakpointSize > windowSize)
@@ -542,16 +565,16 @@ bool BreakpointManager::calculateReadDepth()
             windowSize = breakpointSize;
 
         // select min or max value accoding to the orientation
-        this->readDepthBreakpoints.getReadDepthDiffScore(info->leftReadDepth, \
-                                                      info->rightReadDepth, \
-                                                      info->leftReadDepthDiffScore, \
-                                                      info->rightReadDepthDiffScore, \
-                                                      finalBreakpoint->leftTemplateID, \
-                                                      finalBreakpoint->leftPosition, \
-                                                      finalBreakpoint->rightTemplateID, \
-                                                      finalBreakpoint->rightPosition, \
-                                                      windowSize, \
-                                                      windowSize);
+        this->getReadDepth()->getReadDepthDiffScore(info->leftReadDepth, \
+                                                    info->rightReadDepth, \
+                                                    info->leftReadDepthDiffScore, \
+                                                    info->rightReadDepthDiffScore, \
+                                                    finalBreakpoint->leftTemplateID, \
+                                                    finalBreakpoint->leftPosition, \
+                                                    finalBreakpoint->rightTemplateID, \
+                                                    finalBreakpoint->rightPosition, \
+                                                    windowSize, \
+                                                    windowSize);
 
         if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
             info->leftReadDepthSelected = true;
@@ -564,7 +587,7 @@ bool BreakpointManager::calculateReadDepth()
           svCntByTemplate[bp->leftTemplateID] = 0;
         ++svCntByTemplate[bp->leftTemplateID];
     }
-    this->readDepthBreakpoints.calculateReadDepthStat(svCntByTemplate, candidateSet->size());
+    this->getReadDepth()->calculateReadDepthStat(svCntByTemplate, candidateSet->size());
 }
 
 void BreakpointManager::getNTCount(CharString& sequence, unsigned& a, unsigned& t, unsigned& g, unsigned& c)
@@ -593,15 +616,14 @@ void BreakpointManager::getNTCount(CharString& sequence, unsigned& a, unsigned& 
     }
 }
 
-
 bool BreakpointManager::getSequenceFeature(void)
 {
     //double GCContent = 0.0;
     //double sequenceComplexity = 0.0;
     unsigned kmerSize = 5;
-    unsigned windowSize = this->optionManager->getReadDepthWindowSize();
+    unsigned windowSize = this->getOptionManager()->getReadDepthWindowSize();
     windowSize = 1000;
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     for(auto it = candidateSet->begin(); it != candidateSet->end(); ++it)
     {
         FinalBreakpointInfo& finalBreakpoint = this->finalBreakpoints[*it];
@@ -615,14 +637,14 @@ bool BreakpointManager::getSequenceFeature(void)
         // left
         end = finalBreakpoint.leftPosition;
         start = std::max(end-windowSize, (unsigned) 0);
-        this->clippedBreakpoints.getReferenceSequence(ref, finalBreakpoint.leftTemplateID, start, end);
+        this->getClippedRead()->getReferenceSequence(ref, finalBreakpoint.leftTemplateID, start, end);
         refSize += length(ref);
         this->getNTCount(ref, a, t, g, c);
 
         // right
         start = finalBreakpoint.rightPosition;
-        end = std::min(start + windowSize, this->readDepthBreakpoints.getRefSize(finalBreakpoint.rightTemplateID));
-        this->clippedBreakpoints.getReferenceSequence(ref, finalBreakpoint.rightTemplateID, start, end);
+        end = std::min(start + windowSize, this->getReadDepth()->getRefSize(finalBreakpoint.rightTemplateID));
+        this->getClippedRead()->getReferenceSequence(ref, finalBreakpoint.rightTemplateID, start, end);
         refSize += length(ref);
         this->getNTCount(ref, a, t, g, c);
 
@@ -643,22 +665,22 @@ bool BreakpointManager::find(void)
     bool result;
 
     // split-read analysis
-    RUN(result,"Split-read analysis", this->splitReadBreakpoints.analyze());
+    RUN(result,"Split-read analysis", this->getSplitRead()->analyze());
     if (result == false) 
         return false;
 
     // paired-end analysis
-    if (this->optionManager->doPairedEndAnalysis())
+    if (this->getOptionManager()->doPairedEndAnalysis())
     {
-        RUN(result,"Paired-end analysis", this->pairedEndBreakpoints.analyze());
+        RUN(result,"Paired-end analysis", this->getPairedEndRead()->analyze());
         if (result == false) 
             return false;
     }
     
     // clipped-read analysis
-    if (this->optionManager->doClippedReadAnalysis())
+    if (this->getOptionManager()->doClippedReadAnalysis())
     {
-        RUN(result,"Clipped-read analysis", this->clippedBreakpoints.analyze());
+        RUN(result,"Clipped-read analysis", this->getMergedBreakpoint()->analyze());
         if (result == false) 
             return false;
     }
@@ -668,11 +690,11 @@ bool BreakpointManager::find(void)
 
 bool BreakpointManager::findFinalBreakpoints(void)
 {
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     for(auto it = candidateSet->begin(); it != candidateSet->end(); ++it)
     {
         Breakpoint* bp = *it;
-        ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(bp);
+        ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(bp);
 
         FinalBreakpointInfo finalBreakpoint;
         finalBreakpoint.leftTemplateID = bp->leftTemplateID;
@@ -705,72 +727,45 @@ bool BreakpointManager::findFinalBreakpoints(void)
 bool BreakpointManager::addImpreciseBreakpoints(void)
 {   
     // imprecise SVs
-    TBreakpointSet* candidateSet = this->pairedEndBreakpoints.getCandidateSet();
-    TPosition minSVSize = this->optionManager->getMinSVSize();
-    //double cutoff = this->readDepthBreakpoints.getIQR() * this->optionManager->getDepthOutlier();
-    //printTimeMessage("Depth outlier: " + std::to_string(cutoff));
+    TBreakpointSet* candidateSet = this->getPairedEndRead()->getCandidateSet();
+    TPosition minSVSize = this->getOptionManager()->getMinSVSize();
 
     for(auto itBp = candidateSet->begin(); itBp != candidateSet->end(); ++itBp)
     {
-        if( this->pairedEndBreakpoints.isBreakpointUsed(*itBp) == false)
+        if( this->getPairedEndRead()->isBreakpointUsed(*itBp) == false)
         {
-            ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(*itBp);
-            double normalizedScore = info->pairedEndSupport;
+            Breakpoint* newBp = new Breakpoint;
+            TPosition leftPos, rightPos, tempPos;
+            this->getPairedEndRead()->copyBreakpoint(*newBp, *(*itBp));
 
-            //normalizedScore += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-            //normalizedScore /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-            //normalizedScore *= this->readDepthBreakpoints.getMedianDepth();
-            //if (normalizedScore >= (double) cutoff)
+            sort(newBp->leftPos.begin(), newBp->leftPos.end());
+            sort(newBp->rightPos.begin(), newBp->rightPos.end());
+            leftPos = MID_ELEMENT(newBp->leftPos);
+            rightPos = MID_ELEMENT(newBp->rightPos);
 
-            //if ( info->avgReadDepth < cutoff)
-            {
-                //TBreakpointSet leftMatched, rightMatched, bpEquivalent;
-                //this->mergedBreakpoints.findMatchedBreakpoint(leftMatched, rightMatched, bpEquivalent, *itBp, true);
-                //if (leftMatched.size() == 0 && rightMatched.size() == 0)
+            // left position
+            newBp->leftPos.clear();
+            newBp->leftPos.push_back(leftPos);
+            newBp->minLeftPos = leftPos;
+            newBp->maxLeftPos = leftPos;
+            newBp->needLeftIndexUpdate = true;
 
-                Breakpoint* newBp = new Breakpoint;
-                TPosition leftPos, rightPos, tempPos;
-                this->pairedEndBreakpoints.copyBreakpoint(*newBp, *(*itBp));
+            // right position
+            newBp->rightPos.clear();
+            newBp->rightPos.push_back(rightPos);
+            newBp->minRightPos = rightPos;
+            newBp->maxRightPos = rightPos;
+            newBp->needRightIndexUpdate = true;
 
-                sort(newBp->leftPos.begin(), newBp->leftPos.end());
-                sort(newBp->rightPos.begin(), newBp->rightPos.end());
-                leftPos = MID_ELEMENT(newBp->leftPos);
-                rightPos = MID_ELEMENT(newBp->rightPos);
+            // add
+            bool isNew = false;
+            newBp = this->getMergedBreakpoint()->updateBreakpoint(newBp, isNew);
 
-                // left position
-                newBp->leftPos.clear();
-                newBp->leftPos.push_back(leftPos);
-                newBp->minLeftPos = leftPos;
-                newBp->maxLeftPos = leftPos;
-                newBp->needLeftIndexUpdate = true;
-
-                // right position
-                newBp->rightPos.clear();
-                newBp->rightPos.push_back(rightPos);
-                newBp->minRightPos = rightPos;
-                newBp->maxRightPos = rightPos;
-                newBp->needRightIndexUpdate = true;
-
-                // add
-                bool isNew = false;
-                newBp = this->mergedBreakpoints.updateBreakpoint(newBp, true, isNew);
-
-                // update read-info
-                ReadSupportInfo* newReadInfo;
-                newReadInfo = this->mergedBreakpoints.getReadSupport(newBp);
-                newReadInfo->pairedEndSupport += newBp->suppReads;
-            }
-            /*
-            else
-            {
-                for (auto it = bpEquivalent.begin(); it != bpEquivalent.end(); ++it)
-                {
-                    ReadSupportInfo* newReadInfo = this->mergedBreakpoints.getReadSupport(*it);
-                    newReadInfo->pairedEndSupport += (*itBp)->suppReads;
-                }
-            }
-            */
-        }        
+            // update read-info
+            ReadSupportInfo* newReadInfo;
+            newReadInfo = this->getMergedBreakpoint()->initReadSupport(newBp);
+            newReadInfo->pairedEndSupport += newBp->suppReads;
+        }
     }
 
     return true;
@@ -785,7 +780,7 @@ bool BreakpointManager::applyFilter(void)
 
 bool BreakpointManager::priByEvidenceSum(void)
 {
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     auto itBreakpoint = candidateSet->begin();
     int cutoff = this->optionManager->getCutoff();
 
@@ -794,7 +789,7 @@ bool BreakpointManager::priByEvidenceSum(void)
         if (this->finalBreakpoints[*itBreakpoint].filtered == false)
         {
             FinalBreakpointInfo* finalBreakpointInfo = &this->finalBreakpoints[*itBreakpoint];
-            ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(*itBreakpoint);
+            ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(*itBreakpoint);
             finalBreakpointInfo->score =  (info->splitReadSupport + info->pairedEndSupport + info->clippedReadSupport);
         }
         ++itBreakpoint;
@@ -803,67 +798,37 @@ bool BreakpointManager::priByEvidenceSum(void)
     return true;
 }
 
-bool BreakpointManager::applyNormalization(void)
-{
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
-    auto itBreakpoint = candidateSet->begin();
-    int cutoff = this->optionManager->getCutoff();
-
-    unsigned filteredBreakpointCount = 0;
-    while (itBreakpoint != candidateSet->end())
-    {
-        FinalBreakpointInfo* finalBreakpointInfo = &this->finalBreakpoints[*itBreakpoint];
-        ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(*itBreakpoint);
-
-        //se = (se + cc) / (rd + cc) * 30.0
-        info->splitReadSupport += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-        info->pairedEndSupport += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-        info->clippedReadSupport += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-        info->leftReadDepthDiffScore += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-        info->rightReadDepthDiffScore += BreakpointCandidate::PREVENT_DIV_BY_ZERO();
-
-        info->splitReadSupport /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-        info->pairedEndSupport /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-        info->clippedReadSupport /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-        info->leftReadDepthDiffScore /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-        info->rightReadDepthDiffScore /= (info->avgReadDepth + BreakpointCandidate::PREVENT_DIV_BY_ZERO());
-
-        info->splitReadSupport *= this->readDepthBreakpoints.getMedianDepth();
-        info->pairedEndSupport *= this->readDepthBreakpoints.getMedianDepth();
-        info->clippedReadSupport *= this->readDepthBreakpoints.getMedianDepth();
-        info->leftReadDepthDiffScore *= this->readDepthBreakpoints.getMedianDepth();
-        info->rightReadDepthDiffScore *= this->readDepthBreakpoints.getMedianDepth();
-
-        ++itBreakpoint;
-    }
-
-    return true;
-}
 
 bool BreakpointManager::filterByEvidenceSumAndVote(void)
 {
-    double seTH = this->optionManager->getMinSplitReadSupport();
-    double peTH = this->optionManager->getMinPairSupport();
-    double reTH = this->readDepthBreakpoints.getReTH();
-    unsigned cutoff = this->optionManager->getCutoff();
-    unsigned minVote = this->optionManager->getMinVote();
+    double seTH = this->getOptionManager()->getMinSplitReadSupport();
+    double peTH = this->getOptionManager()->getMinPairSupport();
+    double reTH = this->getReadDepth()->getReTH();
+    int32_t cutoff = this->getOptionManager()->getCutoff();
+    int32_t minVote = this->getOptionManager()->getMinVote();
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->optionManager->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis())
             ++minVote;
-        if (this->optionManager->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis())
             ++minVote;
-        this->optionManager->setMinVote(minVote);
+        this->getOptionManager()->setMinVote(minVote);
     }
 
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    if (minVote == 1)
+    {
+        printTimeMessage("Voting based resecuing is disabled automatically.");
+        minVote = MaxValue<int32_t>::VALUE;
+    }
+
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     auto itBreakpoint = candidateSet->begin();
     unsigned filteredBreakpointCount = 0;
     while (itBreakpoint != candidateSet->end())
     {
         FinalBreakpointInfo* finalBreakpointInfo = &this->finalBreakpoints[*itBreakpoint];
-        ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(*itBreakpoint);
+        ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(*itBreakpoint);
 
         // Evidence sum
         double score = (info->splitReadSupport + info->pairedEndSupport + info->clippedReadSupport);
@@ -871,12 +836,12 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         finalBreakpointInfo->filtered = true;
 
         // Voting
-        unsigned vote = 0;
+        int32_t vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
-        if (this->optionManager->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
+        if (this->getOptionManager()->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
             vote += 1;
-        if (this->optionManager->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis())
         {
             double re = 0.0;
             if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
@@ -900,7 +865,7 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         }
         else if( (*itBreakpoint)->orientation == BreakpointEvidence::INVERTED)
         {
-          if (this->optionManager->getUseREforBalancedSV() && vote >= minVote)
+          if (this->getOptionManager()->getUseREforBalancedSV() && vote >= minVote)
             finalBreakpointInfo->filtered = false;         
         }
 
@@ -909,37 +874,43 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
 
         ++itBreakpoint;
     }
-    this->mergedBreakpoints.setFilteredBreakpointCount(filteredBreakpointCount);
+    this->getMergedBreakpoint()->setFilteredBreakpointCount(filteredBreakpointCount);
 
     return true;
 }
 
 bool BreakpointManager::rescueByCombinedEvidence(void)
 {
-    double seTH = this->optionManager->getMinSplitReadSupport();
-    double peTH = this->optionManager->getMinPairSupport();
-    double reTH = this->readDepthBreakpoints.getReTH();
+    double seTH = this->getOptionManager()->getMinSplitReadSupport();
+    double peTH = this->getOptionManager()->getMinPairSupport();
+    double reTH = this->getReadDepth()->getReTH();
    
     // Min. vote for rescue
-    int minVote = this->optionManager->getMinVote();
+    int minVote = this->getOptionManager()->getMinVote();
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->optionManager->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis())
             ++minVote;
-        if (this->optionManager->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis())
             ++minVote;
-        this->optionManager->setMinVote(minVote);
+        this->getOptionManager()->setMinVote(minVote);
+    }
+
+    if (minVote == 1)
+    {
+        printTimeMessage("Voting based resecuing is disabled automatically.");
+        return true;
     }
 
     // for all breakpoints
     unsigned filteredBreakpointCount = this->getMergedBreakpoint()->getFilteredBreakpointCount();
-    TBreakpointSet* candidateSet = this->mergedBreakpoints.getCandidateSet();
+    TBreakpointSet* candidateSet = this->getMergedBreakpoint()->getCandidateSet();
     auto itBreakpoint = candidateSet->begin();   
     while (itBreakpoint != candidateSet->end())
     {
         FinalBreakpointInfo* finalBreakpointInfo = &this->finalBreakpoints[*itBreakpoint];
-        ReadSupportInfo* info = this->mergedBreakpoints.getReadSupport(*itBreakpoint);
+        ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(*itBreakpoint);
 
         // vote
         unsigned vote = 0;
@@ -967,7 +938,7 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         }
         ++itBreakpoint;
     }
-    this->mergedBreakpoints.setFilteredBreakpointCount(filteredBreakpointCount);
+    this->mergedBreakpoints->setFilteredBreakpointCount(filteredBreakpointCount);
 }
 
 void BreakpointManager::writeBreakpoint()
@@ -1019,12 +990,24 @@ void BreakpointManager::init(AlignmentManager& aln)
     this->optionManager = aln.getOptionManager();
     this->alignmentManager = &aln;
 
-    this->splitReadBreakpoints.setOptionManager(this->optionManager);            
-    this->pairedEndBreakpoints.setOptionManager(this->optionManager);   
-    this->clippedBreakpoints.setOptionManager(this->optionManager);
-    this->readDepthBreakpoints.setOptionManager(this->optionManager);
-    this->mergedBreakpoints.setOptionManager(this->optionManager);
+    this->splitReadBreakpoints = new SplitRead(this->optionManager);
+    this->pairedEndBreakpoints = new PairedEndRead(this->optionManager);
+    this->clippedBreakpoints = new ClippedRead(this->optionManager);
+    this->readDepthBreakpoints = new ReadDepth(this->optionManager);
+    this->mergedBreakpoints = new MergedCandidate(this->optionManager);
 
     // register objects to alignment manager
-    this->alignmentManager->setBreakpointCandidate(&splitReadBreakpoints, &pairedEndBreakpoints, &clippedBreakpoints, &readDepthBreakpoints);
+    this->alignmentManager->setBreakpointCandidate(splitReadBreakpoints, \
+                                                   pairedEndBreakpoints, \
+                                                   clippedBreakpoints, \
+                                                   readDepthBreakpoints);
+}
+
+BreakpointManager::~BreakpointManager()
+{
+    delete this->splitReadBreakpoints;
+    delete this->pairedEndBreakpoints;
+    delete this->clippedBreakpoints;
+    delete this->readDepthBreakpoints;
+    delete this->mergedBreakpoints;
 }

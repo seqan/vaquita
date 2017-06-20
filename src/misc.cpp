@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -67,4 +67,18 @@ void endTimeMessage(std::string msg)
 {
     time(&_t2);
     printTimeMessage("[END] " + msg + " (" + std::to_string((int)difftime(_t2,_t1)) + " seconds.)");
+}
+
+
+void splitString(std::vector<std::string>& v, std::string& s, std::string& d)
+{
+    // split strings
+    size_t last = 0, next = 0;
+    v.clear();
+    while ((next = s.find(d, last)) != std::string::npos) 
+    { 
+        v.push_back(s.substr(last, next-last));
+        last = next + d.length();
+    }
+    v.push_back(s.substr(last));
 }

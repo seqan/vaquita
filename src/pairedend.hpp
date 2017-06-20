@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -42,15 +42,12 @@ class PairedEndRead : public BreakpointCandidate
 	private:
 		std::map<TReadName, BreakpointEvidence> pairInfo;
 		std::map<Breakpoint*, bool> breakpointIsUsedInfo;
-        BreakpointCandidate tempBreakpoints;
 
-		void getCandidateRegion(TPosition&, TPosition&, BreakpointCandidate::SIDE);
+		void getCandidateRegion(TPosition&, TPosition&, BreakpointEvidence::SIDE);
 
     public:
-        void prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
-        {
-            this->tempBreakpoints.setOptionManager(this->getOptionManager()); 
-        }
+        PairedEndRead(CallOptionManager* o) : BreakpointCandidate(o) {};
+
         bool analyze(void);
         void parseReadRecord(TReadName&, BamAlignmentRecord&);
 		

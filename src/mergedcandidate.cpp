@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -49,11 +49,18 @@ void MergedCandidate::doAdditionalJobAfterMerge(Breakpoint* destBp, Breakpoint* 
     destReadInfo->rightReadDepth = srcReadInfo->rightReadDepth;
 }
 
-void MergedCandidate::setReadSupport(Breakpoint* bp, ReadSupportInfo& i)
+ReadSupportInfo* MergedCandidate::initReadSupport(Breakpoint* bp)
 {
     this->readSupportInfo[bp].splitReadSupport = 0;
     this->readSupportInfo[bp].pairedEndSupport = 0;
     this->readSupportInfo[bp].clippedReadSupport = 0;
+
+    return getReadSupport(bp);
+}
+
+void MergedCandidate::setReadSupport(Breakpoint* bp, ReadSupportInfo& i)
+{
+    initReadSupport(bp);
     addReadSupport(bp, i);
 }
 

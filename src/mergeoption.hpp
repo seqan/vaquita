@@ -31,48 +31,29 @@
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
-#include "vaquita.hpp"
-#include "option.hpp"
+#ifndef APP_MERGEOPTION_H_
+#define APP_MERGEOPTION_H_
 
-// ============================================================================
-// Functions
-// ============================================================================
+#include <seqan/sequence.h>
+#include <seqan/arg_parse.h>
+#include "misc.hpp"
 
-void OptionManager::init()
+using namespace seqan;
+
+// ==========================================================================
+// Tags, Classes, Enums
+// ==========================================================================
+class MergeOptionManager : public ArgumentParser
 {
-    setAppName(*this, APP_NAME);
-    setShortDescription(*this, "Possible commands");
+    private :
+        std::vector<std::string> vcfFiles;
+        bool useAll;
 
-    // version & date
-    setVersion(*this, SEQAN_APP_VERSION);
-    setDate(*this, SEQAN_DATE);
-
-    addDescription(*this, std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
-    addDescription(*this, std::string(APP_AUTHOR_INFO));
-    addDescription(*this, std::string(APP_WEBSITE_INFO));
-
-    // synopsis
-    addUsageLine(*this, "[\\fICOMMAND\\fP] [\\fIARGUMENTS\\fP]");
-
-    // commands
-    addTextSection(*this, "Command");
-    addListItem(*this, "\\fBcall\\fP", "Identify structural variations in a single .bam file.");
-    addListItem(*this, "\\fBmerge\\fP", "Merge multilple .vcf files into a single file for multisample genotyping.");
-
-    // mandatory arguments
-    ArgParseArgument arg(ArgParseArgument::STRING, "COMMAND");
-    setValidValues(arg, "call merge");
-    addArgument(*this, arg);
-    setHelpText(*this, 0, "Support : call, merge");
-}
-
-bool OptionManager::parseCommandLine(int argc, char const ** argv)
-{
-    ArgumentParser::ParseResult res = parse(*this, argc, argv);
-    if (res != ArgumentParser::PARSE_OK)
-        return false;
-
-    getArgumentValue(this->command, *this, 0);
-
-    return true;
-}
+    public :
+        void init(void);
+        bool parseCommandLine(int argc, char const ** argv);
+        void printHelpMessage(void) { printHelp(*this); }
+        std::vector<std::string>& getVcfs(void) { return this->vcfFiles; }
+        bool getUseAll(void) { return this->useAll; }
+};
+#endif // APP_MERGEOPTION_H_

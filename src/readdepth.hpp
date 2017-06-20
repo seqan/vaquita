@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,6 @@
 #ifndef APP_READ_DEPTH_H_
 #define APP_READ_DEPTH_H_
 
-#include <deque>
 #include "candidate.hpp"
 #include "intervalindex.hpp"
 
@@ -55,6 +54,8 @@ class ReadDepth : public BreakpointCandidate
         uint32_t refSize = 0;
 
     public:
+        ReadDepth(CallOptionManager* o):BreakpointCandidate(o) {};
+
         void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
         void parseReadRecord(CharString&, BamAlignmentRecord&);
         void addUniformDepth(TTemplateID, TPosition, TPosition, unsigned);
@@ -64,7 +65,7 @@ class ReadDepth : public BreakpointCandidate
         double getDepthTH(void) { return this->depthTH; }
         double getPoissonP(unsigned k, double l);
     	double getKLScore(double a, double b);
-		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointCandidate::SIDE);
+		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointEvidence::SIDE);
 		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);        
         void getReadDepthDiffScore(double& score, double& depth, TTemplateID t, TPosition p, TPosition windowSize);
         void setRandomSeed(int seed);

@@ -1,7 +1,7 @@
 // ==========================================================================
 //                               Vaquita
 // ==========================================================================
-// Copyright (c) 2016, Jongkyu Kim, MPI-MolGen/FU-Berlin
+// Copyright (c) 2017, Jongkyu Kim, MPI-MolGen/FU-Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -58,13 +58,15 @@ class MergedCandidate : public BreakpointCandidate
         unsigned filteredBreakpointCount = 0;
 
     public:
-        void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
+        MergedCandidate(CallOptionManager* o):BreakpointCandidate(o) {};
 
-        
+        void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*);
+       
         void setFilteredBreakpointCount(unsigned c) { filteredBreakpointCount = c; }
         void setReadSupport(Breakpoint*, ReadSupportInfo&);
         void addReadSupport(Breakpoint*, ReadSupportInfo&);
-        
+        ReadSupportInfo* initReadSupport(Breakpoint*);
+
         ReadSupportInfo* getReadSupport(Breakpoint*);
         unsigned getFilteredBreakpointCount(void) { return filteredBreakpointCount; }
 };
