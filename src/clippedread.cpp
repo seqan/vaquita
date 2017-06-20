@@ -157,7 +157,7 @@ bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
     TTemplateID refID;
     TPosition refBeginPosInGenome, refEndPosInGenome;
     setSearchRegionByOrientation(orientation, searchSide, *bp, refID, refBeginPosInGenome, refEndPosInGenome);
-    if(refBeginPosInGenome < 0 || refBeginPosInGenome > refEndPosInGenome)
+    if(refBeginPosInGenome > refEndPosInGenome)
         return false;
 
     // get reference sequence
@@ -246,7 +246,7 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
         refBeginPosInGenome = refEndPosInGenome - searchSize;
         refID = bp->rightTemplateID;
     }
-    if(refBeginPosInGenome < 0 || refBeginPosInGenome > refEndPosInGenome)
+    if(refBeginPosInGenome > refEndPosInGenome)
         return false;
 
     // get reference sequence
@@ -469,7 +469,7 @@ bool ClippedRead::alignByMyersBitVector(TFoundPosition& foundPositions, CharStri
 void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end)
 {
     clear(seq);
-    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || start < 0 || end >= templateSize[templateID])
+    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || end >= templateSize[templateID])
         return;
 
     try {

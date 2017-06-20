@@ -67,6 +67,8 @@ bool SVManager::filterImpreciseDel(void)
     }
     printTimeMessage("Depth outliers: >" + std::to_string(cutoff));
     printTimeMessage("Filtered imprecise deletions: " + std::to_string(filtered));
+
+    return true;
 }
 
 bool SVManager::loadVcf(std::string& fileName, bool useAll)
@@ -147,6 +149,8 @@ bool SVManager::loadVcf(std::string& fileName, bool useAll)
         // store it
         sv[mapInfo["SVTYPE"]].push_back(record);
     }
+
+    return true;
 }
 
 bool SVManager::writeVCF(void)
@@ -257,6 +261,8 @@ bool SVManager::addTranslocation(VcfRecordEnhanced& orgRecord)
     record.id = SVTYPE_TRANSLOCATION() + "_" + std::to_string(nID);
     record.alt = "<" + SVTYPE_TRANSLOCATION() + ">";
     sv[SVTYPE_TRANSLOCATION()].push_back(record);
+
+    return true;
 }
 
 bool SVManager::findTranslocation(void)
@@ -647,6 +653,8 @@ bool SVManager::findInversion(void)
         else
             ++itBreakpoint;
     }
+
+    return true;
 }
 
 bool SVManager::findDeletion(void)
@@ -800,6 +808,8 @@ bool SVManager::findBreakend(void)
         ++nID;
         itBreakpoint = mergedBreakpoint->removeBreakpoint(bp);
     }
+
+    return true;
 }
 
 bool SVManager::orderSV(void)
@@ -818,6 +828,8 @@ bool SVManager::orderSVByEvidenceSum(void)
     for (auto itSVType = this->sv.begin(); itSVType != this->sv.end(); ++itSVType)
         for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
             itSV->sc = itSV->se + itSV->pe + itSV->ce;
+
+    return true;
 }
 
 bool SVManager::orderSVByRankAgg(void)
@@ -944,4 +956,5 @@ uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = fa
 bool SVManager::addSV(std::string& svType, VcfRecordEnhanced& record)
 {
     sv[svType].push_back(record);
+    return true;
 }

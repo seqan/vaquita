@@ -217,7 +217,7 @@ void ReadDepth::addUniformDepth(TTemplateID id, TPosition beginPos, TPosition si
     this->baseCount += (size * depth);
 }
 
-double ReadDepth::printDepth(TTemplateID templateID, TPosition position, TPosition windowSize)
+void ReadDepth::printDepth(TTemplateID templateID, TPosition position, TPosition windowSize)
 {
     for (TPosition pos = position; pos < position+windowSize; ++pos)
     {

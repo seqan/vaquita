@@ -78,6 +78,8 @@ bool BreakpointManager::merge(void)
         RUN(result,"Get sequence information.", getSequenceFeature());
 
     printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
+
+    return true;
 }
 
 bool BreakpointManager::mergeSplitRead(void)
@@ -588,6 +590,8 @@ bool BreakpointManager::calculateReadDepth()
         ++svCntByTemplate[bp->leftTemplateID];
     }
     this->getReadDepth()->calculateReadDepthStat(svCntByTemplate, candidateSet->size());
+
+    return true;
 }
 
 void BreakpointManager::getNTCount(CharString& sequence, unsigned& a, unsigned& t, unsigned& g, unsigned& c)
@@ -776,6 +780,7 @@ bool BreakpointManager::applyFilter(void)
   //if (this->optionManager->getUseRankAggregation())
   //  this->applyNormalization();
   this->filterByEvidenceSumAndVote();
+  return true;
 }
 
 bool BreakpointManager::priByEvidenceSum(void)
@@ -939,6 +944,8 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         ++itBreakpoint;
     }
     this->mergedBreakpoints->setFilteredBreakpointCount(filteredBreakpointCount);
+
+    return true;
 }
 
 void BreakpointManager::writeBreakpoint()
