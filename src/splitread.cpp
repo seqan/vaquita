@@ -46,6 +46,8 @@ bool SplitRead::updateBreakpointByIndels(std::vector<BreakpointEvidence>& beList
         // every breakpoints based on split-read have exact positions.
         bp->bFoundExactPosition = true; 
     }
+
+    return true;
 }
 
 bool SplitRead::analyzeRead(TReadName& readName)
@@ -111,7 +113,12 @@ bool SplitRead::analyzeRead(TReadName& readName)
             if (this->isAdjacent(qSeg1, qSeg2)) // adjacent
                 skipThis = false; 
             else if (this->isOverlap(qSeg1, qSeg2)) // overlap
-                overlapSize = abs(qSeg2.beginPos-qSeg1.endPos);
+            {
+                if (qSeg2.beginPos > qSeg1.endPos)
+                    overlapSize = qSeg2.beginPos - qSeg1.endPos;
+                else
+                    overlapSize = qSeg1.endPos - qSeg2.beginPos;
+            }
         }
         else // different strand
         {
@@ -125,9 +132,21 @@ bool SplitRead::analyzeRead(TReadName& readName)
             else if (this->isOverlap(qSeg1, _qSeg2)) // overalp
             {
                 if (qSeg1.beginPos <= _qSeg2.beginPos)
-                    overlapSize = abs(_qSeg2.beginPos - qSeg1.endPos);
+                {
+                    if (_qSeg2.beginPos > qSeg1.endPos)
+                        overlapSize = _qSeg2.beginPos - qSeg1.endPos;
+                    else
+                        overlapSize = qSeg1.endPos - _qSeg2.beginPos;
+                    //overlapSize = abs(_qSeg2.beginPos - qSeg1.endPos);
+                }
                 else
-                    overlapSize = abs(qSeg1.beginPos - _qSeg2.endPos);
+                {
+                    if (qSeg1.beginPos > _qSeg2.endPos)
+                        overlapSize = qSeg1.beginPos - _qSeg2.endPos;
+                    else
+                        overlapSize = _qSeg2.endPos - qSeg1.beginPos;
+                    //overlapSize = abs(qSeg1.beginPos - _qSeg2.endPos);
+                }
             }
         }
 
