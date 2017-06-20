@@ -21,4 +21,4 @@ You can find more options using `vaquita --help.`
 
 Contact
 -----------------
-Jongkyu Kim (xenigmax@gmail.com)
+Jongkyu Kim (vaquita@jongkyu.kim)
