@@ -4,7 +4,7 @@
 
 The current version is developed for __short-reads__ datasets. For long and noisy reads, it's performance is not rigorously tested. The next version will support long-reads officially.
 
-Download & Complie
+Download & Compile
 -----------------
     git clone https://github.com/seqan/vaquita.git
     mkdir vaquita-build && cd vaquita-build
