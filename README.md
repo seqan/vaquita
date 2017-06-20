@@ -2,14 +2,15 @@
 
 [Vaquita](http://www.worldwildlife.org/species/vaquita) accurately identifies __structural variations__ using split-reads, discordant read-pairs, soft-clipped reads, and read-depth information. Vaquita does not depend on external tools and very fast. You can analyze __50x WGS sample within an hour__.
 
-The current version is developed for __short-reads__ datasets. For long and noisy reads, it's performance is not rigorously tested. The next version will support long-reads officially.
+The current version is developed for __short-reads__ datasets. For long and noisy reads, it's performance is not rigorously tested. 
 
 Download & Compile
 -----------------
     git clone https://github.com/seqan/vaquita.git
     mkdir vaquita-build && cd vaquita-build
     cmake ../vaquita && make vaquita -j 4
- 
+
+Vaquita supports GCC≥4.9 and Clang≥3.8.
 
 Usage
 -----------------
