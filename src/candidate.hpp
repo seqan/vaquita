@@ -168,7 +168,7 @@ class BreakpointCandidate
                         
         // operations for breakpoints
         TReadID getCurrentReadID(void) { return this->currentReadID; }
-        TReadID getNextReadID(void) { this->currentReadID++; }
+        TReadID getNextReadID(void) { return this->currentReadID++; }
 
         std::set<Breakpoint*>* getCandidateSet() { return &this->breakpoints; }     // GET candidate set
 

@@ -43,27 +43,28 @@ matrix:
     - os: osx
       compiler: gcc-7
       install: export CXX="g++-7"
-    - os: osx
-      compiler: clang-3.6
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install llvm36
-      install: ['export CXX="clang++-3.6"' ]
-    - os: osx
-      compiler: clang-3.7
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install llvm37
-      install: ['export CXX="clang++-3.7"' ]
-    - os: osx
-      compiler: clang-3.8
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install llvm38
-      install: export CXX="clang++-3.8" -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
+    # not supported by travis
+    #- os: osx
+    #  compiler: clang-3.6
+    #  before_install:
+    #    - sudo brew update
+    #    - sudo brew tap homebrew/versions
+    #    - sudo brew install llvm36
+    #  install: ['export CXX="clang++-3.6"' ]
+    #- os: osx
+    #  compiler: clang-3.7
+    #  before_install:
+    #    - sudo brew update
+    #    - sudo brew tap homebrew/versions
+    #    - sudo brew install llvm37
+    #  install: ['export CXX="clang++-3.7"' ]
+    #- os: osx
+    #  compiler: clang-3.8
+    #  before_install:
+    #    - sudo brew update
+    #    - sudo brew tap homebrew/versions
+    #    - sudo brew install llvm38
+    #  install: export CXX="clang++-3.8" -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
 
 script:
   - mkdir -p build && cd build
