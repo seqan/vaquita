@@ -9,7 +9,8 @@ Download & Compile
     git clone https://github.com/seqan/vaquita.git
     mkdir vaquita-build && cd vaquita-build
     cmake ../vaquita && make vaquita -j 4
- 
+
+Vaquita supports GCC≥4.9 and Clang≥3.6.
 
 Usage
 -----------------
