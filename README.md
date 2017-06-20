@@ -13,7 +13,7 @@ Download & Complie
 
 Usage
 -----------------
-    vaquita -cg [reference.fa] [input.bam] > [output.vcf]
+    vaquita call -r [reference.fa] [input.bam] > [output.vcf]
 
 * the `.bam` file must be sorted by coordinates. eg. `samtools sort`
 
