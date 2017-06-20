@@ -6,9 +6,9 @@ The current version is developed for __short-reads__ datasets. For long and nois
 
 Download & Complie
 -----------------
-    git clone --recursive https://github.com/xenigmax/vaquita.git
+    git clone https://github.com/seqan/vaquita.git
     mkdir vaquita-build && cd vaquita-build
-    cmake ../vaquita && make vaquita
+    cmake ../vaquita && make vaquita -j 4
  
 
 Usage
