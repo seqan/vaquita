@@ -10,7 +10,7 @@ Download & Compile
     mkdir vaquita-build && cd vaquita-build
     cmake ../vaquita && make vaquita -j 4
 
-Vaquita supports GCC≥4.9 and Clang≥3.6.
+Vaquita supports GCC≥4.9 and Clang≥3.8.
 
 Usage
 -----------------
