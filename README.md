@@ -16,6 +16,8 @@ Usage
     vaquita call -r [reference.fa] [input.bam] > [output.vcf]
 
 * the `.bam` file must be sorted by coordinates. eg. `samtools sort`
-
 You can find more options using `vaquita --help.`
 
+Contact
+-----------------
+Jongkyu Kim (xenigmax@gmail.com)
