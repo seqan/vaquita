@@ -11,19 +11,19 @@ Download & Compile
     mkdir vaquita-build && cd vaquita-build
     cmake ../vaquita && make vaquita -j 4
 
-Vaquita supports GCC≥4.9 and Clang≥3.8.
+Vaquita supports `GCC≥4.9` and `Clang≥3.8`.
 
 Usage
 -----------------
     vaquita call -r [reference.fa] [input.bam] > [output.vcf]
 
 * the `.bam` file must be sorted by coordinates. eg. `samtools sort`.
-You can find more options using `vaquita call --help.`
+You can find more options using `vaquita call --help`.
 
 Citation
 -----------------
-Vaquita will be presented in [WABI 2017](http://www.acm-bcb.org/WABI/2017/index.php) in Boston. 
-[This repositorty](https://github.com/seqan/vaquita) contains all the scripts that I used for benchmakring. 
+Vaquita will be presented in [WABI 2017](http://www.acm-bcb.org/WABI/2017/index.php) in Boston, and not published in a journal, yet.
+You can find all the scripts and information about raw datasets that I used for benchmarking at [this repository](https://github.com/xenigmax/vaquita_WABI2017).
 
 Contact
 -----------------
