@@ -20,6 +20,11 @@ Usage
 * the `.bam` file must be sorted by coordinates. eg. `samtools sort`.
 You can find more options using `vaquita call --help.`
 
+Citation
+-----------------
+Vaquita will be presented in [WABI 2017](http://www.acm-bcb.org/WABI/2017/index.php) in Boston. 
+[This repositorty](https://github.com/seqan/vaquita) contains all the scripts that I used for benchmakring. 
+
 Contact
 -----------------
 Jongkyu Kim (vaquita@jongkyu.kim)
