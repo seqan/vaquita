@@ -22,8 +22,11 @@ You can find more options using `vaquita call --help`.
 
 Citation
 -----------------
-Vaquita will be presented in [WABI 2017](http://www.acm-bcb.org/WABI/2017/index.php) in Boston, and not published in a journal, yet.
-You can find all the scripts and information about raw datasets that I used for benchmarking at [this repository](https://github.com/xenigmax/vaquita_WABI2017).
+Jongkyu Kim and Knut Reinert, Vaquita: Fast and Accurate Identification of Structural Variations using Combined Evidence. _Workshop on Algorithmic Bioinformatics (WABI) 2017_
+
+DOI: [10.4230/LIPIcs.WABI.2017.13](http://drops.dagstuhl.de/opus/volltexte/2017/7635/)
+
+* You can find all the scripts and information about raw datasets that I used for benchmarking at [this repository](https://github.com/xenigmax/vaquita_WABI2017).
 
 Contact
 -----------------
