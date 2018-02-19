@@ -261,7 +261,7 @@ void AlignmentManager::calcInsertSize(void)
     // median absolute deviation
     for (auto it=this->readsForMedInsEst.begin(); it != this->readsForMedInsEst.end(); ++it)
     {
-        it->first = abs(it->first - this->insertMedian);
+        it->first = abs(it->first - (int32_t)this->insertMedian);
         if (it->first < 0) it->first *= -1;
     }
     sort(this->readsForMedInsEst.begin(), this->readsForMedInsEst.end(), AlignmentManager::pairCompare);
