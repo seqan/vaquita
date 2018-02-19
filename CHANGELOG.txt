@@ -1,0 +1,18 @@
+-----------------------------------------------------------------------------------------------
+VAQUITA CHANGELOGS
+-----------------------------------------------------------------------------------------------
+< 0.4.0 >
+* New features
+  - Support SeqAn 2.4.0
+  : Use the most recent version of SeqAn that provides improved features.
+
+  - Multisample genotyping
+  : Vaquita supports 'call' and 'merge' mode.
+
+* Selected bug fixes
+  - Fix bugs when calculating scores around 0-depth areas.
+  - Several typos were corrected.
+
+< 0.3.0 / WABI2017 >
+This version is the first release that was presented in WABI 2017.
+DOI: 10.4230/LIPIcs.WABI.2017.13
