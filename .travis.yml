@@ -9,6 +9,7 @@ before_install:
  - test $(uname) = "Linux" && wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add - || true
  - test $(uname) = "Linux" && sudo apt-get update -y || true
  - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
+ - test $(uname) = "Darwin" && rm /usr/local/include/c++ || true
  - test $(uname) = "Darwin" && brew update || true
  - test $(uname) = "Darwin" && brew install gcc@4.9 || true
  - test $(uname) = "Darwin" && brew install gcc@5 || true
