@@ -6,8 +6,11 @@ VAQUITA CHANGELOGS
   - Support SeqAn 2.4.0
   : Use the most recent version of SeqAn that provides improved features.
 
+  - Version checking
+  :  message when there is a new release. You can disable this if you want.
+
   - Multisample genotyping
-  : Vaquita supports 'call' and 'merge' mode.
+  : Vaquita supports 'call' and 'merge' mode. There are changes of option names. Please check it with "--help".
 
 * Selected bug fixes
   - Fix bugs when calculating scores around 0-depth areas.
