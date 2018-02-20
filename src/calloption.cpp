@@ -41,7 +41,7 @@
 
 void CallOptionManager::init()
 {
-    setAppName(*this, APP_NAME + std::string(" call"));
+    setAppName(*this, APP_NAME);
     setShortDescription(*this, "Identification mode");
 
     // version & date
