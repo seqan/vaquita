@@ -71,3 +71,4 @@ script:
   - mkdir -p build && cd build
   - cmake .. 
   - make vaquita VERBOSE=1
+  - ./bin/vaquita --help
