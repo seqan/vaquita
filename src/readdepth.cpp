@@ -261,7 +261,7 @@ void ReadDepth::getReadDepthDiffScore(double& leftOuterDepthAvg, double& rightOu
 
 void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID templateID, TPosition position, TPosition windowSize, TPosition breakpointSize, BreakpointEvidence::SIDE side)
 {
-    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || readDepthInfo[templateID].size() == 0)
+    if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || readDepthInfo[templateID].size() == 0 || windowSize == 0 || breakpointSize == 0)
     {
        leftAvg = 0.0;
        rightAvg = 0.0;

@@ -557,21 +557,22 @@ bool BreakpointManager::calculateReadDepth()
         ReadSupportInfo* info = this->getMergedBreakpoint()->getReadSupport(bp);
         FinalBreakpointInfo* finalBreakpoint = &this->finalBreakpoints[bp];
 
-        int32_t windowSize = this->getOptionManager()->getReadDepthWindowSize();
-        int32_t breakpointSize = 1;
+        uint32_t windowSize = this->getOptionManager()->getReadDepthWindowSize();
+        uint32_t breakpointSize = 1;
 
-        if (finalBreakpoint->rightPosition > finalBreakpoint->leftPosition)
-          breakpointSize += (finalBreakpoint->rightPosition - finalBreakpoint->leftPosition);
-        else
-          breakpointSize += (finalBreakpoint->leftPosition - finalBreakpoint->rightPosition);
+        // get breakpoint size if two positions are on a same template
+        if (finalBreakpoint->leftTemplateID == finalBreakpoint->rightTemplateID)
+        {
+          if (finalBreakpoint->rightPosition > finalBreakpoint->leftPosition)
+            breakpointSize += (finalBreakpoint->rightPosition - finalBreakpoint->leftPosition);
+          else
+            breakpointSize += (finalBreakpoint->leftPosition - finalBreakpoint->rightPosition);
+        }
 
         // restrict the search region's size
-        //if (breakpointSize > windowSize)
-        //    breakpointSize = windowSize;
-        if (windowSize > breakpointSize)
+        if (windowSize > breakpointSize && breakpointSize > 0)
             windowSize = breakpointSize;
 
-        // select min or max value accoding to the orientation
         this->getReadDepth()->getReadDepthDiffScore(info->leftReadDepth, \
                                                     info->rightReadDepth, \
                                                     info->leftReadDepthDiffScore, \
