@@ -57,13 +57,12 @@ void OptionManager::init()
     // commands
     addTextSection(*this, "Command");
     addListItem(*this, "\\fBcall\\fP", "Identify structural variations in a single .bam file.");
-    addListItem(*this, "\\fBmerge\\fP", "Merge multiple .vcf files into a single file for multisample genotyping.");
+    addListItem(*this, "\\fBmerge\\fP", "Merge multilple .vcf files into a single file for multisample genotyping.");
 
     // mandatory arguments
     ArgParseArgument arg(ArgParseArgument::STRING, "COMMAND");
     setValidValues(arg, "call merge");
     addArgument(*this, arg);
-    setHelpText(*this, 0, "Support: call, merge");
 }
 
 bool OptionManager::parseCommandLine(int argc, char const ** argv)
