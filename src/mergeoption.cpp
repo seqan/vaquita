@@ -40,7 +40,7 @@
 
 void MergeOptionManager::init()
 {
-    setAppName(*this, APP_NAME + std::string(" merge"));
+    setAppName(*this, APP_NAME);
     setShortDescription(*this, "Merging mode");
 
     // version & date
@@ -52,7 +52,7 @@ void MergeOptionManager::init()
     addDescription(*this, std::string(APP_WEBSITE_INFO));
 
     // synopsis
-    addUsageLine(*this, "[\\fIOPTIONS\\fP] [\\fIin_1.vcf\\fP, .. ,\\fIin_N.vcf\\fP] > [\\fIout.vcf\\fP]");
+    addUsageLine(*this, "merge [\\fIOPTIONS\\fP] [\\fIin_1.vcf\\fP, .. ,\\fIin_N.vcf\\fP] > [\\fIout.vcf\\fP]");
 
     // options
     addOption(*this, ArgParseOption("", "use-all", "Consider all records. (Default: Consider SVs with 'PASS' in the filter column.)"));
