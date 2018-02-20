@@ -54,12 +54,11 @@ void CallOptionManager::init()
     addDescription(*this, std::string(APP_WEBSITE_INFO));
 
     // usage line
-    addUsageLine(*this, "[\\fIOPTIONS\\fP] -r [\\fIreference.fa\\fP] [\\fIalignment.bam\\fP] > [\\fIout.vcf\\fP]");
+    addUsageLine(*this, "call [\\fIOPTIONS\\fP] -r [\\fIreference.fa\\fP] [\\fIalignment.bam\\fP] > [\\fIout.vcf\\fP]");
 
     // mandatory arguments
     addArgument(*this, ArgParseArgument(ArgParseArgument::INPUT_FILE, "ALIGNMENT(.bam)")); 
     setValidValues(*this, 0, ".bam");
-    setHelpText(*this, 0, "Support : .bam");
 
     // Options
     addSection(*this, "General");
