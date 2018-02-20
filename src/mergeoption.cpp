@@ -40,7 +40,7 @@
 
 void MergeOptionManager::init()
 {
-    setAppName(*this, APP_NAME + std::string(" merge"));
+    setAppName(*this, APP_NAME);
     setShortDescription(*this, "Merging mode");
 
     // version & date
