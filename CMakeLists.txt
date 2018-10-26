@@ -1,5 +1,5 @@
 project (vaquita CXX)
-cmake_minimum_required (VERSION 3.0.0)
+cmake_minimum_required (VERSION 3.2)
 
 set (SEQAN_LIBRARY_PATH seqan-library-2.4.0)
 set (CMAKE_INCLUDE_PATH
@@ -9,6 +9,6 @@ set (CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/${SEQAN_LIBRARY_PATH}/cmake/
     ${CMAKE_MODULE_PATH})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -O3 -DNDEBUG -DSEQAN_BGZF_NUM_THREAD=1")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++17 -O3 -DNDEBUG -DSEQAN_BGZF_NUM_THREAD=1")
 
 add_subdirectory(src)
