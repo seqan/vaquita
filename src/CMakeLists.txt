@@ -16,6 +16,7 @@ endif()
 
 # Dependencies
 find_package (ZLIB)
+find_package (SEQAN3 REQUIRED HINTS ${CMAKE_SOURCE_DIR}/seqan3/build_system)
 find_package (SeqAn REQUIRED)
 
 # Build setup
@@ -30,4 +31,4 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
 
 # Add executable and link against SeqAn dependencies.
 add_executable (vaquita vaquita.cpp misc.cpp option.cpp calloption.cpp mergeoption.cpp alignment.cpp candidate.cpp splitread.cpp pairedend.cpp clippedread.cpp mergedcandidate.cpp readdepth.cpp breakpoint.cpp sv.cpp svmerge.cpp)
-target_link_libraries (vaquita ${SEQAN_LIBRARIES})
+target_link_libraries (vaquita ${SEQAN_LIBRARIES} seqan3::seqan3)
