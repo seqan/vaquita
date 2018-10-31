@@ -32,7 +32,7 @@
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
 #include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
+// #include <seqan/arg_parse.h>
 #include "vaquita.hpp"
 #include "option.hpp"
 #include "calloption.hpp"
@@ -41,16 +41,20 @@
 #include "sv.hpp"
 #include "svmerge.hpp"
 
+#include <seqan3/argument_parser/all.hpp>
+
 int callMain(int argc, char const ** argv)
 {
     time_t startTime, endTime;
     bool result;
 
     // Get options
-    CallOptionManager oMgr;
-    oMgr.init();
-    if ( !oMgr.parseCommandLine(argc, argv) ) 
-        return 1;
+    CallOptionManager oMgr("call", argc, argv);
+    oMgr.init_options();
+    if(oMgr.parseCommandLine() != 0)
+    {
+        return 2;
+    }
 
     // Init.
     AlignmentManager alnMgr(oMgr);
@@ -106,14 +110,14 @@ int callMain(int argc, char const ** argv)
 }
 
 int callMerge(int argc, char const ** argv)
-{  
+{
     time_t startTime, endTime;
     bool result;
 
     // Get options
-    MergeOptionManager oMgr;
-    oMgr.init();
-    if ( !oMgr.parseCommandLine(argc, argv) ) 
+    MergeOptionManager oMgr("merge", argc, argv);
+    oMgr.init_options();
+    if (oMgr.parseCommandLine() != 0)
         return 1;
 
     // Init.
@@ -127,28 +131,30 @@ int callMerge(int argc, char const ** argv)
 
 int main(int argc, char const ** argv)
 {
-    OptionManager oMgr;
-    oMgr.init();
-
+    bool callOrMerge = false;
     if (argc > 1)
     {
         std::string cmd(argv[1]);
         if (cmd == "call")
         {
             callMain(argc-1, argv+1);
+            callOrMerge = true;
         }
         else if (cmd == "merge")
         {
             callMerge(argc-1, argv+1);
-        }
-        else
-        {
-            oMgr.parseCommandLine(argc, argv);
+            callOrMerge = true;
         }
     }
-    else
+    if (!callOrMerge)
     {
-        oMgr.printHelpMessage();
+        // Either not enough arguments passed, or first argument was not call/merge.
+        OptionManager oMgr("vaquita", argc, argv);
+        oMgr.init_options();
+        if(oMgr.parseCommandLine() != 0)
+        {
+            return 1;
+        }
     }
 
     return 0;

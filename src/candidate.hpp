@@ -41,7 +41,6 @@
 #include <vector>
 #include <utility>
 #include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
 #include "calloption.hpp"
 #include "intervalindex.hpp"

@@ -34,25 +34,22 @@
 #ifndef APP_OPTION_H_
 #define APP_OPTION_H_
 
-#include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
 #include "misc.hpp"
 
-using namespace seqan;
+#include <seqan3/argument_parser/all.hpp>
 
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-class OptionManager : public ArgumentParser
+class OptionManager : seqan3::argument_parser
 {
     private :
-        CharString command;
+        std::string command;
 
     public :
-        void init(void);
-        bool parseCommandLine(int argc, char const ** argv);
-        std::string getCommand(void) { return CharStringToStdString(this->command); };
-
-        void printHelpMessage(void) { printHelp(*this); }
+        using seqan3::argument_parser::argument_parser;
+        void init_options();
+        int parseCommandLine();
+        std::string getCommand(void) { return this->command; };
 };
 #endif // APP_OPTION_H_
