@@ -38,56 +38,65 @@
 // Functions
 // ============================================================================
 
-void MergeOptionManager::init()
+void MergeOptionManager::init_options()
 {
-    setAppName(*this, APP_NAME);
-    setShortDescription(*this, "Merging mode");
+    (*this).info.short_description = "Merging mode";
 
     // version & date
-    setVersion(*this, SEQAN_APP_VERSION);
-    setDate(*this, SEQAN_DATE);
+    (*this).info.version = SEQAN_APP_VERSION;
+    (*this).info.date = SEQAN_DATE;
 
-    addDescription(*this, std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
-    addDescription(*this, std::string(APP_AUTHOR_INFO));
-    addDescription(*this, std::string(APP_WEBSITE_INFO));
+    (*this).info.description.push_back(std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
+    (*this).info.description.push_back(std::string(APP_AUTHOR_INFO));
+    (*this).info.description.push_back(std::string(APP_WEBSITE_INFO));
 
     // synopsis
-    addUsageLine(*this, "merge [\\fIOPTIONS\\fP] [\\fIin_1.vcf\\fP, .. ,\\fIin_N.vcf\\fP] > [\\fIout.vcf\\fP]");
+    (*this).info.synopsis.push_back("merge [\\fIOPTIONS\\fP] [\\fIin_1.vcf\\fP, .. ,\\fIin_N.vcf\\fP] > [\\fIout.vcf\\fP]");
 
     // options
-    addOption(*this, ArgParseOption("", "use-all", "Consider all records. (Default: Consider SVs with 'PASS' in the filter column.)"));
-    setDefaultValue(*this, "use-all", "false");
+    (*this).add_flag(useAll, '\0', "use-all", "Consider all records. (Default: Consider SVs with 'PASS' in the filter column.)");
 
     // files
-    ArgParseArgument arg(ArgParseArgument::STRING, "INPUT");
-    addArgument(*this, arg);
+    (*this).add_positional_option(vcfFiles, "INPUT (.vcf)");
 }
 
-bool MergeOptionManager::parseCommandLine(int argc, char const ** argv)
+int MergeOptionManager::parseCommandLine()
 {
-    ArgumentParser::ParseResult res = parse(*this, argc, argv);
-    if (res != ArgumentParser::PARSE_OK)
-        return false;
+    try
+    {
+        (*this).parse();
+    }
+    catch(seqan3::parser_interruption const &)
+    {
+        return -1;
+    }
+    catch(seqan3::parser_invalid_argument const & ext)
+    {
+        std::cerr << "[PARSER ERROR] " << ext.what() << "\n\n";
+        const char * dummy_argv[] = {"./dummy", "-h"};
+        MergeOptionManager parser_dummy("merge", 0, dummy_argv);
+        parser_dummy.init_options();
+        try
+        {
+            parser_dummy.parse();
+        }
+        catch(seqan3::parser_interruption const &)
+        {
 
-    CharString vcfFileString;    
-    getArgumentValue(vcfFileString, *this, 0);
+        }
+        return 1;
+    }
 
-    // split strings
-    std::string s = CharStringToStdString(vcfFileString), d = ",";
-    splitString(this->vcfFiles, s, d);
-
-    // extention check
+    // extension check
     for (unsigned i=0; i < this->vcfFiles.size(); ++i)
     {
         std::string ext = this->vcfFiles[i].substr(this->vcfFiles[i].length()-4);
         if (ext != ".vcf")
         {
-            std::cerr << "Unknown file extention: " << ext << " (" << this->vcfFiles[i] << ")\n";
-            return false;
+            std::cerr << "Unknown file extension: " << ext << " (" << this->vcfFiles[i] << ")\n";
+            return 2;
         }
     }
 
-    this->useAll = isSet(*this, "use-all");
-
-    return true;
+    return 0;
 }
