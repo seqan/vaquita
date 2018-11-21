@@ -32,7 +32,6 @@
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
 #include <seqan/sequence.h>
-// #include <seqan/arg_parse.h>
 #include "vaquita.hpp"
 #include "option.hpp"
 #include "calloption.hpp"
@@ -67,6 +66,7 @@ int callMain(int argc, char const ** argv)
 
     // Loading & extraction
     RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    if (!result) return 3;
     printTimeMessage("Found evidences");
     printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");
     printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from discordant read-pairs.");
@@ -74,6 +74,7 @@ int callMain(int argc, char const ** argv)
 
     // Identification
     RUN(result,"BREAKPOINT IDENTIFICATION", bpMgr.find());
+    if (!result) return 3;
     printTimeMessage("Found breakpoints");
     printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from split-read evidences.");
     printTimeMessage(std::to_string(bpMgr.getPairedEndRead()->getBreakpointCount())  + " from read-pair evidences.");
@@ -81,15 +82,18 @@ int callMain(int argc, char const ** argv)
 
     // Merging
     RUN(result,"BREAKPOINT MERGING", bpMgr.merge());
+    if (!result) return 3;
     printTimeMessage("Breakpoints after merging: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
     // Filtering
     RUN(result,"BREAKPOINT FILTERING", bpMgr.applyFilter());
+    if (!result) return 3;
     int bpCnt = bpMgr.getMergedBreakpoint()->getBreakpointCount() - bpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
     printTimeMessage("Breakpoints after filtering: " + std::to_string(bpCnt));
 
     // SV Classification
     RUN(result,"SV CLASSIFICATION", svMgr.findSV());
+    if (!result) return 3;
     printTimeMessage("Found SVs");
     printTimeMessage(std::to_string(svMgr.getDeletionCount()) + " deletions.");
     printTimeMessage(std::to_string(svMgr.getInversionCount()) + " inversions.");
