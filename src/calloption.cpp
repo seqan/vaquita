@@ -44,7 +44,8 @@
 
 void CallOptionManager::init_options()
 {
-    seqan3::arithmetic_range_validator<int> int_val{0, INT32_MAX};
+    seqan3::arithmetic_range_validator int_val{0, INT32_MAX};
+    seqan3::arithmetic_range_validator dbl_val{0, DBL_MAX};
 
     (*this).info.short_description = "Identification mode";
 
@@ -61,13 +62,13 @@ void CallOptionManager::init_options()
     (*this).info.synopsis.push_back("call [\\fIOPTIONS\\fP] -r [\\fIreference.fa\\fP] [\\fIalignment.bam\\fP] > [\\fIout.vcf\\fP]");
 
     // mandatory arguments
-    (*this).add_positional_option(inputFile, "ALIGNMENT(.bam)", seqan3::file_ext_validator({std::string("bam")}));
+    (*this).add_positional_option(inputFile, "ALIGNMENT(.bam)", seqan3::input_file_validator({std::string("bam")}));
 
     // Options
     (*this).add_section("General");
-    (*this).add_option(referenceGenome, 'r', "referenceGenome", "Genome sequence file(.fa).", seqan3::option_spec::REQUIRED, seqan3::file_ext_validator({std::string("fa")}));
+    (*this).add_option(referenceGenome, 'r', "referenceGenome", "Genome sequence file(.fa).", seqan3::option_spec::REQUIRED, seqan3::input_file_validator({std::string("fa")}));
     (*this).add_option(cutoff, 'c', "cutoff", "Minimum number of supporting read-pairs and split-reads.", seqan3::option_spec::DEFAULT, int_val);
-    (*this).add_option(minVote, 'v', "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1: Supported by all evidence types.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<int>{-1, INT32_MAX});
+    (*this).add_option(minVote, 'v', "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1: Supported by all evidence types.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{-1, INT32_MAX});
     (*this).add_option(minMapQual, 'q', "minMapQual", "Mapping quaility cutoff.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(minSVSize, 'm', "minSVSize", "Structural varation size cutoff.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(adjTol, 'a', "adjTol", "Positional adjacency in nucleotide resolution.", seqan3::option_spec::DEFAULT, int_val);
@@ -81,17 +82,17 @@ void CallOptionManager::init_options()
     (*this).add_section("Split-read evidence");
     (*this).add_option(maxSplit, 's', "maxSplit", "Maximum number of segments in a single read.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(maxOverlap, 'o', "maxOverlap", "Maximum allowed overlaps between segements.", seqan3::option_spec::DEFAULT, int_val);
-    (*this).add_option(minSplitReadSupport, 'b', "minSplitReadSupport", "SVs supported by >= b get a vote.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
+    (*this).add_option(minSplitReadSupport, 'b', "minSplitReadSupport", "SVs supported by >= b get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     (*this).add_section("Read-pair evidence");
     (*this).add_option(pairedEndSearchSize, 'p', "pairedEndSearchSize", "Size of breakpoint candidate regions.", seqan3::option_spec::DEFAULT, int_val);
-    (*this).add_option(abInsParam, 'i', "abInsParam", "Discordant insertion size: median +/- (MAD * i)", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
-    (*this).add_option(depthOutlier, 'd', "depthOutlier", "Depth outlier: {Q3 + (IQR * d)}", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
-    (*this).add_option(minPairSupport, 'e', "minPairSupport", "SVs supported by >= e get a vote.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
+    (*this).add_option(abInsParam, 'i', "abInsParam", "Discordant insertion size: median +/- (MAD * i)", seqan3::option_spec::DEFAULT, dbl_val);
+    (*this).add_option(depthOutlier, 'd', "depthOutlier", "Depth outlier: {Q3 + (IQR * d)}", seqan3::option_spec::DEFAULT, dbl_val);
+    (*this).add_option(minPairSupport, 'e', "minPairSupport", "SVs supported by >= e get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     (*this).add_section("Soft-clipped evidence");
     (*this).add_option(minClippedSeqSize, 'l', "minClippedSeqSize", "Minimum size of clipped sequence to be considered.", seqan3::option_spec::DEFAULT, int_val);
-    (*this).add_option(clippedSeqErrorRate, 't', "clippedSeqErrorRate", "Maximum edit distance: floor{length of clipped sequence * (1 - t)}.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
+    (*this).add_option(clippedSeqErrorRate, 't', "clippedSeqErrorRate", "Maximum edit distance: floor{length of clipped sequence * (1 - t)}.", seqan3::option_spec::DEFAULT, dbl_val);
     // //addOption(*this, ArgParseOption("", "use-assembly", "Use consitency based sequence assembly(deprecated)."));
     // //setDefaultValue(*this, "use-assembly", "false");
 
@@ -99,7 +100,7 @@ void CallOptionManager::init_options()
     (*this).add_option(samplingNum, 'n', "samplingNum", "Number of random sample to estimate the background distribution(Q3, IQR, ..) of read-depth evidence.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(readDepthWindowSize, 'f', "readDepthWindowSize", "Window size to caclulate average read-depth around breakpoints.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_flag(useREforBalancedSV, '\0', "use-re-for-bs", "Use RE for balanced SVs(eg. inverison).");
-    (*this).add_option(reThreshold, 'j', "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * h)} get a vote.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator<double>{0.0, DBL_MAX});
+    (*this).add_option(reThreshold, 'j', "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * h)} get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     // output options
     /* not supported yet
@@ -115,10 +116,6 @@ int CallOptionManager::parseCommandLine()
     {
         (*this).parse();
     }
-    catch(seqan3::parser_interruption const &)
-    {
-        return -1;
-    }
     catch(seqan3::parser_invalid_argument const & ext)
     {
         std::cerr << "[PARSER ERROR] " << ext.what() << "\n\n";
@@ -129,7 +126,7 @@ int CallOptionManager::parseCommandLine()
         {
             parser_dummy.parse();
         }
-        catch(seqan3::parser_interruption const &)
+        catch(seqan3::parser_invalid_argument const &)
         {
 
         }

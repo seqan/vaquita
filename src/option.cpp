@@ -63,7 +63,7 @@ void OptionManager::init_options()
 
     // mandatory arguments
     std::string command{};
-    (*this).add_positional_option(command, "COMMAND", seqan3::value_list_validator({std::string("call"), std::string("merge")}));
+    (*this).add_positional_option(command, "COMMAND", seqan3::value_list_validator(std::vector<std::string>{std::string("call"), std::string("merge")}));
 }
 
 int OptionManager::parseCommandLine()
@@ -82,15 +82,11 @@ int OptionManager::parseCommandLine()
         {
             parser_dummy.parse();
         }
-        catch(seqan3::parser_interruption const &)
+        catch(seqan3::parser_invalid_argument const &)
         {
 
         }
         return 1;
-    }
-    catch (seqan3::parser_interruption const &) // expected behaviour on special requests (e.g. `--help`)
-    {
-        return -1;
     }
 
     return 0;

@@ -57,7 +57,7 @@ void MergeOptionManager::init_options()
     (*this).add_flag(useAll, '\0', "use-all", "Consider all records. (Default: Consider SVs with 'PASS' in the filter column.)");
 
     // files
-    (*this).add_positional_option(vcfFiles, "INPUT (.vcf)");
+    (*this).add_positional_option(vcfFiles, "INPUT (.vcf)", seqan3::input_file_validator({"vcf"}));
 }
 
 int MergeOptionManager::parseCommandLine()
@@ -65,10 +65,6 @@ int MergeOptionManager::parseCommandLine()
     try
     {
         (*this).parse();
-    }
-    catch(seqan3::parser_interruption const &)
-    {
-        return -1;
     }
     catch(seqan3::parser_invalid_argument const & ext)
     {
@@ -80,7 +76,7 @@ int MergeOptionManager::parseCommandLine()
         {
             parser_dummy.parse();
         }
-        catch(seqan3::parser_interruption const &)
+        catch(seqan3::parser_invalid_argument const &)
         {
 
         }
