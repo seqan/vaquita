@@ -32,7 +32,6 @@
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ==========================================================================
 #include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
 #include "vaquita.hpp"
 #include "option.hpp"
 #include "calloption.hpp"
@@ -41,16 +40,20 @@
 #include "sv.hpp"
 #include "svmerge.hpp"
 
+#include <seqan3/argument_parser/all.hpp>
+
 int callMain(int argc, char const ** argv)
 {
     time_t startTime, endTime;
     bool result;
 
     // Get options
-    CallOptionManager oMgr;
-    oMgr.init();
-    if ( !oMgr.parseCommandLine(argc, argv) ) 
-        return 1;
+    CallOptionManager oMgr("call", argc, argv);
+    oMgr.init_options();
+    if(oMgr.parseCommandLine() != 0)
+    {
+        return 2;
+    }
 
     // Init.
     AlignmentManager alnMgr(oMgr);
@@ -63,6 +66,7 @@ int callMain(int argc, char const ** argv)
 
     // Loading & extraction
     RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    if (!result) return 3;
     printTimeMessage("Found evidences");
     printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");
     printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from discordant read-pairs.");
@@ -70,6 +74,7 @@ int callMain(int argc, char const ** argv)
 
     // Identification
     RUN(result,"BREAKPOINT IDENTIFICATION", bpMgr.find());
+    if (!result) return 3;
     printTimeMessage("Found breakpoints");
     printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from split-read evidences.");
     printTimeMessage(std::to_string(bpMgr.getPairedEndRead()->getBreakpointCount())  + " from read-pair evidences.");
@@ -77,15 +82,18 @@ int callMain(int argc, char const ** argv)
 
     // Merging
     RUN(result,"BREAKPOINT MERGING", bpMgr.merge());
+    if (!result) return 3;
     printTimeMessage("Breakpoints after merging: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
     // Filtering
     RUN(result,"BREAKPOINT FILTERING", bpMgr.applyFilter());
+    if (!result) return 3;
     int bpCnt = bpMgr.getMergedBreakpoint()->getBreakpointCount() - bpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
     printTimeMessage("Breakpoints after filtering: " + std::to_string(bpCnt));
 
     // SV Classification
     RUN(result,"SV CLASSIFICATION", svMgr.findSV());
+    if (!result) return 3;
     printTimeMessage("Found SVs");
     printTimeMessage(std::to_string(svMgr.getDeletionCount()) + " deletions.");
     printTimeMessage(std::to_string(svMgr.getInversionCount()) + " inversions.");
@@ -106,14 +114,14 @@ int callMain(int argc, char const ** argv)
 }
 
 int callMerge(int argc, char const ** argv)
-{  
+{
     time_t startTime, endTime;
     bool result;
 
     // Get options
-    MergeOptionManager oMgr;
-    oMgr.init();
-    if ( !oMgr.parseCommandLine(argc, argv) ) 
+    MergeOptionManager oMgr("merge", argc, argv);
+    oMgr.init_options();
+    if (oMgr.parseCommandLine() != 0)
         return 1;
 
     // Init.
@@ -127,28 +135,30 @@ int callMerge(int argc, char const ** argv)
 
 int main(int argc, char const ** argv)
 {
-    OptionManager oMgr;
-    oMgr.init();
-
+    bool callOrMerge = false;
     if (argc > 1)
     {
         std::string cmd(argv[1]);
         if (cmd == "call")
         {
             callMain(argc-1, argv+1);
+            callOrMerge = true;
         }
         else if (cmd == "merge")
         {
             callMerge(argc-1, argv+1);
-        }
-        else
-        {
-            oMgr.parseCommandLine(argc, argv);
+            callOrMerge = true;
         }
     }
-    else
+    if (!callOrMerge)
     {
-        oMgr.printHelpMessage();
+        // Either not enough arguments passed, or first argument was not call/merge.
+        OptionManager oMgr("vaquita", argc, argv);
+        oMgr.init_options();
+        if(oMgr.parseCommandLine() != 0)
+        {
+            return 1;
+        }
     }
 
     return 0;

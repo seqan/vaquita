@@ -34,25 +34,24 @@
 #ifndef APP_MERGEOPTION_H_
 #define APP_MERGEOPTION_H_
 
-#include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
 #include "misc.hpp"
 
-using namespace seqan;
+#include <seqan3/argument_parser/all.hpp>
 
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-class MergeOptionManager : public ArgumentParser
+class MergeOptionManager : seqan3::argument_parser
 {
     private :
         std::vector<std::string> vcfFiles;
-        bool useAll;
+        bool useAll{false};
+        std::string vcfFileStrings;
 
     public :
-        void init(void);
-        bool parseCommandLine(int argc, char const ** argv);
-        void printHelpMessage(void) { printHelp(*this); }
+        using seqan3::argument_parser::argument_parser;
+        void init_options();
+        int parseCommandLine();
         std::vector<std::string>& getVcfs(void) { return this->vcfFiles; }
         bool getUseAll(void) { return this->useAll; }
 };

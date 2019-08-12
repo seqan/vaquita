@@ -18,6 +18,7 @@ endif()
 find_package (ZLIB)
 find_package (SEQAN3 REQUIRED HINTS ${CMAKE_SOURCE_DIR}/seqan3/build_system)
 find_package (SeqAn REQUIRED)
+set (CMAKE_EXE_LINKER_FLAGS "")
 
 # Build setup
 include_directories (${SEQAN_INCLUDE_DIRS})

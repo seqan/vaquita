@@ -38,40 +38,56 @@
 // Functions
 // ============================================================================
 
-void OptionManager::init()
+void OptionManager::init_options()
 {
-    setAppName(*this, APP_NAME);
-    setShortDescription(*this, "Possible commands");
+    (*this).info.short_description = "Possible commands";
+    (*this).info.app_name = APP_NAME;
 
     // version & date
-    setVersion(*this, SEQAN_APP_VERSION);
-    setDate(*this, SEQAN_DATE);
+    (*this).info.version = SEQAN_APP_VERSION;
+    (*this).info.date = SEQAN_DATE;
 
-    addDescription(*this, std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
-    addDescription(*this, std::string(APP_AUTHOR_INFO));
-    addDescription(*this, std::string(APP_WEBSITE_INFO));
+    (*this).info.description.push_back(std::string(APP_NAME) + std::string(": ") + std::string(APP_TITLE));
+    (*this).info.author = std::string(APP_AUTHOR_INFO);
+    (*this).info.url = std::string(APP_WEBSITE_INFO);
 
     // synopsis
-    addUsageLine(*this, "[\\fICOMMAND\\fP] [\\fIARGUMENTS\\fP]");
+    (*this).info.synopsis.push_back("[\\fICOMMAND\\fP (call, merge)] [\\fIARGUMENTS\\fP]");
 
     // commands
-    addTextSection(*this, "Command");
-    addListItem(*this, "\\fBcall\\fP", "Identify structural variations in a single .bam file.");
-    addListItem(*this, "\\fBmerge\\fP", "Merge multilple .vcf files into a single file for multisample genotyping.");
+    (*this).add_section("Command");
+    (*this).add_subsection("call");
+    (*this).add_line("Identify structural variations in a single .bam file.", true);
+    (*this).add_subsection("merge");
+    (*this).add_line("Merge multilple .vcf files into a single file for multisample genotyping.", true);
 
     // mandatory arguments
-    ArgParseArgument arg(ArgParseArgument::STRING, "COMMAND");
-    setValidValues(arg, "call merge");
-    addArgument(*this, arg);
+    std::string command{};
+    (*this).add_positional_option(command, "COMMAND", seqan3::value_list_validator(std::vector<std::string>{std::string("call"), std::string("merge")}));
 }
 
-bool OptionManager::parseCommandLine(int argc, char const ** argv)
+int OptionManager::parseCommandLine()
 {
-    ArgumentParser::ParseResult res = parse(*this, argc, argv);
-    if (res != ArgumentParser::PARSE_OK)
-        return false;
+    try
+    {
+        (*this).parse();
+    }
+    catch (seqan3::parser_invalid_argument const & ext) // the user did something wrong
+    {
+        std::cerr << "[PARSER ERROR] " << ext.what() << "\n\n";
+        const char * dummy_argv[] = {"./dummy", "-h"};
+        OptionManager parser_dummy("merge", 0, dummy_argv);
+        parser_dummy.init_options();
+        try
+        {
+            parser_dummy.parse();
+        }
+        catch(seqan3::parser_invalid_argument const &)
+        {
 
-    getArgumentValue(this->command, *this, 0);
+        }
+        return 1;
+    }
 
-    return true;
+    return 0;
 }
