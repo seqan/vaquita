@@ -22,6 +22,7 @@ set (CMAKE_EXE_LINKER_FLAGS "")
 
 # Build setup
 include_directories (${SEQAN_INCLUDE_DIRS})
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../SViper/include/)
 add_definitions (${SEQAN_DEFINITIONS})
 add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
 add_definitions (-DSEQAN_DATE="${SEQAN_APP_DATE}")
