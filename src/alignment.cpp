@@ -34,14 +34,16 @@
 #include "alignment.hpp"
 #include "misc.hpp"
 
-bool AlignmentManager::load(void)
+bool AlignmentManager::load(bool longRead)
 {
+    this->isLongRead = longRead;
+
     if( optionManager == NULL )
         return false;
 
     if ( !open(this->bamFileIn, seqan::toCString(optionManager->getInputFile())) )
     {
-        std::cerr << "ERROR: Could not open " << optionManager->getInputFile() << std::endl;
+        std::cerr << "ERROR: Could not open " << optionManager->getInputFile(longRead) << std::endl;
         return false;
     }
 
@@ -76,11 +78,11 @@ bool AlignmentManager::load(void)
         }
 
         this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doPairedEndAnalysis() )
+        if ( optionManager->doPairedEndAnalysis(this->isLongRead) )
             this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doClippedReadAnalysis() )
             this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doReadDepthAnalysis() )
+        if ( optionManager->doReadDepthAnalysis(this->isLongRead) )
             this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
 
         seqan::CharString qNameWithPairInfo;
@@ -103,7 +105,7 @@ bool AlignmentManager::load(void)
                 continue;
 
             // calculate depth
-            if ( optionManager->doReadDepthAnalysis() )
+            if ( optionManager->doReadDepthAnalysis(this->isLongRead) )
                 this->readDepth->parseReadRecord(record.qName, record);
 
             checkClippedSequence = false;
@@ -197,7 +199,7 @@ bool AlignmentManager::load(void)
 
             // discordant pair
             qNameWithPairInfo = record.qName;
-            if ( optionManager->doPairedEndAnalysis() && checkPairedEndRead == true )
+            if ( optionManager->doPairedEndAnalysis(this->isLongRead) && checkPairedEndRead == true )
             {
                 this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
                 ++pairedReadCount;
@@ -223,7 +225,7 @@ bool AlignmentManager::load(void)
             this->calcInsertSize();
 
         // check records used in median estimation
-        if (optionManager->doPairedEndAnalysis())
+        if (optionManager->doPairedEndAnalysis(this->isLongRead))
         {
             for (unsigned i=0; i < this->readsForMedInsEst.size(); ++i)
             {

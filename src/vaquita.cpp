@@ -65,7 +65,9 @@ int callMain(int argc, char const ** argv)
     oMgr.printUserInput();
 
     // Loading & extraction
-    RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    if (!oMgr.getInputFile().empty()) RUN(result, "SHORT READ EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    if (!result && oMgr.getInputFile(true).empty()) return 3;
+    if (!oMgr.getInputFile(true).empty()) RUN(result, "LONG READ EVIDENCE EXTRACTION", alnMgr.load(true));
     if (!result) return 3;
     printTimeMessage("Found evidences");
     printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");

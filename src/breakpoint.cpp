@@ -46,7 +46,7 @@ bool BreakpointManager::merge(void)
 
     RUN(result,"From split-read evidences.", mergeSplitRead());
     printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
-    if (this->optionManager->doPairedEndAnalysis())
+    if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"From read-pair evidences.", mergePairedEnd());
         printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
@@ -59,7 +59,7 @@ bool BreakpointManager::merge(void)
     }
 
     // 2) add imprecise breakpoints
-    if (this->optionManager->doPairedEndAnalysis())
+    if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"Add imprecise breakpoints to the merged set.", addImpreciseBreakpoints());
         printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
@@ -70,7 +70,7 @@ bool BreakpointManager::merge(void)
     printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
 
     // 4) add read-depth based information (needs final breakpoints)
-    if (this->optionManager->doReadDepthAnalysis())
+    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         RUN(result,"Calculate read-depth information", calculateReadDepth());
 
     // 5) sequence featre
@@ -405,7 +405,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 BreakpointCandidate::updateRightMinMaxPos(newBp);
 
                 // update depth
-                if (this->optionManager->doReadDepthAnalysis())
+                if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                 {
                     this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                newPos, \
@@ -429,7 +429,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 BreakpointCandidate::updateLeftMinMaxPos(newBp);
 
                 // update depth
-                if (this->optionManager->doReadDepthAnalysis())
+                if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                 {
                     this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                newPos, \
@@ -468,7 +468,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     BreakpointCandidate::updateLeftMinMaxPos(newBp);
 
                     // update depth
-                    if (this->optionManager->doReadDepthAnalysis())
+                    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                     {
                         this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                    newPos, \
@@ -504,7 +504,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     BreakpointCandidate::updateRightMinMaxPos(newBp);
 
                     // update depth
-                    if (this->optionManager->doReadDepthAnalysis())
+                    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                     {
                         this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                    newPos, \
@@ -680,7 +680,7 @@ bool BreakpointManager::find(void)
         return false;
 
     // paired-end analysis
-    if (this->getOptionManager()->doPairedEndAnalysis())
+    if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"Paired-end analysis", this->getPairedEndRead()->analyze());
         if (result == false)
@@ -820,9 +820,9 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->getOptionManager()->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
         this->getOptionManager()->setMinVote(minVote);
     }
@@ -850,9 +850,9 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         int32_t vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
-        if (this->getOptionManager()->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead) && info->pairedEndSupport >= peTH)
             vote += 1;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         {
             double re = 0.0;
             if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
@@ -901,9 +901,9 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->getOptionManager()->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
         this->getOptionManager()->setMinVote(minVote);
     }
@@ -927,9 +927,9 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         unsigned vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
-        if (this->optionManager->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
+        if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead) && info->pairedEndSupport >= peTH)
             vote += 1;
-        if (this->optionManager->doReadDepthAnalysis())
+        if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         {
             double re = 0.0;
             if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
