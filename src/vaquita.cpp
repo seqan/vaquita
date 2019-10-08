@@ -42,6 +42,10 @@
 
 #include <seqan3/argument_parser/all.hpp>
 
+#include <sviper.h>
+#include <io.h>
+#include <auxiliary.h>
+
 int callMain(int argc, char const ** argv)
 {
     time_t startTime, endTime;
@@ -103,6 +107,45 @@ int callMain(int argc, char const ** argv)
 
     // SV ordering
     RUN(result,"SV PRIORITIZATION", svMgr.orderSV());
+
+    {
+        CmdOptions options(oMgr.getInputFile(true), oMgr.getInputFile(), oMgr.getOutputFile(), oMgr.getReferenceGenome());
+        input_output_information info{options};
+
+        // Check files
+        if (!open_file_success(info.long_read_bai, (info.cmd_options.long_read_file_name + ".bai").c_str()) ||
+            !open_file_success(info.short_read_bai, (info.cmd_options.short_read_file_name + ".bai").c_str()) ||
+            !open_file_success(info.log_file, (info.cmd_options.output_prefix + ".log").c_str()))
+            return 1;
+
+        // Prepare file hangles for parallel computing
+        // -------------------------------------------------------------------------
+        RUN(result, "SViper: PREP PARALLEL PROCESSING", prep_file_handles(info));
+
+        // Polish variants
+        // -------------------------------------------------------------------------
+        info.log_file  << "======================================================================" << std::endl
+                        << "START polishing variants in of file " << info.cmd_options.candidate_file_name << std::endl
+                        << "======================================================================" << std::endl;
+
+        std::vector<VcfRecordEnhanced> & deletions_sviper = svMgr.getVcfBySVType()[svMgr.SVTYPE_DELETION()];
+        startTimeMessage("SViper: POLISHING VARIANTS");
+        #pragma omp parallel for schedule(guided)
+        for (unsigned vidx = 0; vidx < deletions_sviper.size(); ++vidx)
+        {
+            if (oMgr.getReportFilteredResult() == true || deletions_sviper[vidx].status == VcfRecordEnhanced::STATUS::PASS)
+            {
+                Variant tmp{deletions_sviper[vidx]};
+                polish_variant(tmp, info);
+                deletions_sviper[vidx].update(tmp);
+            }
+        } // parallel for loop
+        endTimeMessage("SViper: POLISHING VARIANTS");
+
+        info.log_file  << "======================================================================" << std::endl
+                  << "                                 DONE"  << std::endl
+                  << "======================================================================" << std::endl;
+    }
 
     // Result
     RUN(result, "WRITE RESULT", svMgr.writeVCF());
