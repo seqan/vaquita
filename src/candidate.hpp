@@ -46,15 +46,13 @@
 #include "calloption.hpp"
 #include "intervalindex.hpp"
 
-using namespace seqan;
-
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
 typedef uint8_t                         TTemplateID;
 typedef uint32_t                        TPosition;
 typedef uint16_t                        TRelativePosition;
-typedef CharString                      TReadName;
+typedef seqan::CharString               TReadName;
 typedef uint32_t                        TReadID;
 typedef bool                            TStrand;
 typedef std::vector<TPosition>          TPositionList;
@@ -70,8 +68,8 @@ typedef std::set<SequenceSegment>                                   TSequenceSeg
 
 struct BreakpointEvidence
 {
-    static TPosition const INVALID_POS = MaxValue<TPosition>::VALUE;
-    static TTemplateID const NOVEL_TEMPLATE = MaxValue<TTemplateID>::VALUE;
+    static TPosition const INVALID_POS = seqan::MaxValue<TPosition>::VALUE;
+    static TTemplateID const NOVEL_TEMPLATE = seqan::MaxValue<TTemplateID>::VALUE;
 
     // P.: -><-, S.: <-->, I.: ->->, LEFT/RIGHT CLIP : temporary use.
     enum ORIENTATION {PROPERLY_ORIENTED_LARGE=0, PROPERLY_ORIENTED_SMALL=1, SWAPPED=2, INVERTED=3, NOT_DECIDED=4, CLIPPED=5, NUM_OF_ORIENTATION=6};
@@ -79,7 +77,7 @@ struct BreakpointEvidence
 
     SequenceSegment leftSegment, rightSegment;
     TReadID suppRead;
-    DnaString sequence; // eg. clipped sequence
+    seqan::DnaString sequence; // eg. clipped sequence
     ORIENTATION orientation;
 };
 
@@ -90,9 +88,9 @@ struct AlignmentInfo
     std::vector<BreakpointEvidence> indelList, clippedList;
 };
 
-typedef std::vector<std::pair<TPosition, DnaString> >              TClippedSequences;
+typedef std::vector<std::pair<TPosition, seqan::DnaString> >              TClippedSequences;
 class Breakpoint
-{  
+{
     public :
         TTemplateID leftTemplateID, rightTemplateID;
         TStrand leftReverseFlag, rightReverseFlag;
@@ -114,13 +112,13 @@ class Breakpoint
         bool bFoundExactPosition = false;
 };
 
-typedef String<Breakpoint*>                                         TBreakpointList;
+typedef seqan::String<Breakpoint*>                                  TBreakpointList;
 typedef std::set<Breakpoint*>                                       TBreakpointSet;
 typedef std::vector<Breakpoint*>                                    TBreakpointVector;
 typedef std::pair<std::pair<TPosition, TPosition>, Breakpoint*>     TPosBreakpoint;
 typedef std::vector<TPosBreakpoint>                                 TPosBreakpointVector;
 typedef std::map<TPosition, TPosBreakpointVector*>                  TBreakpointBinIndex;
-typedef std::map<TTemplateID, TBreakpointBinIndex>                  TBreakpointIndex; 
+typedef std::map<TTemplateID, TBreakpointBinIndex>                  TBreakpointIndex;
 
 typedef IntervalIndex<Breakpoint*>  TBreakpointIntervalIndex;
 typedef std::map<TTemplateID, TBreakpointIntervalIndex*>     TBreakpointIntervalIndexMap;
@@ -150,7 +148,7 @@ class BreakpointCandidate
     public :
         BreakpointCandidate(CallOptionManager*);
         ~BreakpointCandidate();
-       
+
         void setPositionalAdj(int32_t a) { this->posAdj = a; }
         int32_t getPositionalAdj(void) { return this->posAdj; }
 
@@ -165,7 +163,7 @@ class BreakpointCandidate
         void setOptionManager(CallOptionManager* op) { this->op = op; setPositionalAdj(op->getAdjTol()); }
         CallOptionManager* getOptionManager(void) { return this->op; }
         int32_t getBreakpointCount(void) { return this->breakpoints.size(); }
-                        
+
         // operations for breakpoints
         TReadID getCurrentReadID(void) { return this->currentReadID; }
         TReadID getNextReadID(void) { return this->currentReadID++; }
@@ -173,7 +171,7 @@ class BreakpointCandidate
         std::set<Breakpoint*>* getCandidateSet() { return &this->breakpoints; }     // GET candidate set
 
         void addNewBreakpoint(Breakpoint*); // addition of a new breakpoint
-        void findBreakpoint(TBreakpointSet&, TBreakpointSet&, TBreakpointSet&, Breakpoint*); 
+        void findBreakpoint(TBreakpointSet&, TBreakpointSet&, TBreakpointSet&, Breakpoint*);
 
         Breakpoint* copyAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
         Breakpoint* moveAndUpdateBreakpoint(Breakpoint*, bool&);                    // ADD breakpoints by copying
@@ -183,20 +181,20 @@ class BreakpointCandidate
         Breakpoint* updateBreakpoint(BreakpointEvidence&, bool&);
         void updateBreakpointIndex(Breakpoint*);                                    // UPDATE index only
         TBreakpointSet::iterator removeBreakpoint(Breakpoint*);
-        
+
         bool isOverlap(SequenceSegment&, SequenceSegment&);                         // checking for overlap of 2 intervals
         bool isAdjacent(SequenceSegment&, SequenceSegment&);                        // checking for adjancy of 2 intervals
 
         // defined by derived functions
-        virtual void prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn) { return; }
-        virtual void parseReadRecord(TReadName&, BamAlignmentRecord&) { return; }
-        virtual void checkReadRecord(TReadName&, BamAlignmentRecord&) { return; }
+        virtual void prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn) { return; }
+        virtual void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&) { return; }
+        virtual void checkReadRecord(TReadName&, seqan::BamAlignmentRecord&) { return; }
         virtual bool analyze(void) { return true; }
         virtual void doAdditionalJobAfterMerge(Breakpoint*, Breakpoint*) { return; }
         virtual bool isNew(TReadName&) { return true; }
-      
+
         // static functions
-        static bool isOverlap(TPosition, TPosition, TPosition, TPosition);                 
+        static bool isOverlap(TPosition, TPosition, TPosition, TPosition);
         static bool isAdjacent(TPosition, TPosition, TPosition, TPosition, TPosition);
         static bool isAdjacent(TPosition, TPosition, TPosition);
         static void setPositionWithAdj(TPosition &, TPosition &, TPosition);        // make extended intervals using positional adjancy
@@ -205,7 +203,7 @@ class BreakpointCandidate
         static void copyBreakpoint(Breakpoint&, Breakpoint&);                       // copy breakpoint
         static void moveBreakpoint(Breakpoint&, Breakpoint&);
 
-        static void parseCIGAR(AlignmentInfo&, TReadID&, BamAlignmentRecord&, bool, bool, TPosition, TPosition); // get Alignment info from CIGAR
+        static void parseCIGAR(AlignmentInfo&, TReadID&, seqan::BamAlignmentRecord&, bool, bool, TPosition, TPosition); // get Alignment info from CIGAR
         static bool compareByQueryPos(AlignmentInfo&, AlignmentInfo&);              // for ordering with sorting function
         static bool compareByChrmAndPos(Breakpoint&, Breakpoint&);                  // for ordering with sorting function
         static bool isMatchedBreakpoint(Breakpoint*, Breakpoint*);

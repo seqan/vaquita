@@ -61,7 +61,7 @@ struct FinalBreakpointInfo
     bool imprecise = false;
 };
 
-typedef std::map<CharString, unsigned>  TKmerSet;
+typedef std::map<seqan::CharString, unsigned>  TKmerSet;
 class BreakpointManager
 {
     private :
@@ -82,7 +82,7 @@ class BreakpointManager
         bool findFinalBreakpoints(void);
 
         bool filterByEvidenceSumAndVote(void);
-        
+
         bool priByRankAgg(void);
         bool priByEvidenceSum(void);
 
@@ -102,7 +102,7 @@ class BreakpointManager
         bool rescueByCombinedEvidence(void);
         void writeBreakpoint(void);
         bool getSequenceFeature(void);
-        void getNTCount(CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
+        void getNTCount(seqan::CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
 
         inline AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
         inline CallOptionManager* getOptionManager(void) { return this->optionManager; }

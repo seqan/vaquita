@@ -175,10 +175,10 @@ bool PairedEndRead::isNew(TReadName &readName)
     return (this->pairInfo.find(readName) == this->pairInfo.end());
 }
 
-void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
+void PairedEndRead::parseReadRecord(TReadName &readName, seqan::BamAlignmentRecord &record)
 {
     // can't specify the positions (should be filtered in record reading step)
-    if (record.rID == BamAlignmentRecord::INVALID_REFID || record.rNextId == BamAlignmentRecord::INVALID_REFID)
+    if (record.rID == seqan::BamAlignmentRecord::INVALID_REFID || record.rNextId == seqan::BamAlignmentRecord::INVALID_REFID)
         return;
 
     bool isNew = (this->pairInfo.find(readName) == this->pairInfo.end());

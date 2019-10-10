@@ -40,21 +40,21 @@
 #include "misc.hpp"
 #include "clippedread.hpp"
 
-void ClippedRead::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
+void ClippedRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn)
 {
     for (unsigned i=0; i < length(header); ++i)
     {
-        if (header[i].type == BamHeaderRecordType::BAM_HEADER_REFERENCE)
+        if (header[i].type == seqan::BamHeaderRecordType::BAM_HEADER_REFERENCE)
         {
-            CharString templateName, templateLengthStr;
+            seqan::CharString templateName, templateLengthStr;
             getTagValue(templateName, "SN", header[i]);
             getTagValue(templateLengthStr, "LN", header[i]);
-            toCString(templateLengthStr);
-               
+            seqan::toCString(templateLengthStr);
+
             TTemplateID rID = BreakpointEvidence::NOVEL_TEMPLATE;
             TPosition templateLength = BreakpointEvidence::INVALID_POS;
-            getIdByName(rID, contigNamesCache(context(fileIn)), templateName);
-            templateLength = std::stol( std::string(toCString(templateLengthStr)) );
+            getIdByName(rID, contigNamesCache(seqan::context(fileIn)), templateName);
+            templateLength = std::stol( CharStringToStdString(templateLengthStr) );
 
             this->templateSize[rID] = templateLength;
         }
@@ -63,23 +63,23 @@ void ClippedRead::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
     if ( this->getOptionManager()->doClippedReadAnalysis() == true )
     {
         // load fasta file
-        CharString pathToFaFile = this->getOptionManager()->getReferenceGenome();
-        CharString pathToFaiFile = pathToFaFile;
-        append(pathToFaiFile, ".fai");
-        if (!open(this->faiIndex, toCString(pathToFaFile)))
+        seqan::CharString pathToFaFile = this->getOptionManager()->getReferenceGenome();
+        seqan::CharString pathToFaiFile = pathToFaFile;
+        seqan::append(pathToFaiFile, ".fai");
+        if (!open(this->faiIndex, seqan::toCString(pathToFaFile)))
         {
-            printTimeMessage("ClippedRead : Can't load '" + std::string(toCString(pathToFaiFile)) + "', try to build it.");
-            if (!build(this->faiIndex, toCString(pathToFaFile)))
+            printTimeMessage("ClippedRead : Can't load '" + CharStringToStdString(pathToFaiFile) + "', try to build it.");
+            if (!build(this->faiIndex, seqan::toCString(pathToFaFile)))
             {
-                printMessage("[ERROR] ClippedRead : Can't build FASTA index with '" + std::string(toCString(pathToFaFile)) + \
+                printMessage("[ERROR] ClippedRead : Can't build FASTA index with '" + CharStringToStdString(pathToFaFile) + \
                              "'. Please check 'referenceGenome' option with '--help'.");
                 exit(1);
             }
             else
             {
-                if (!save(this->faiIndex, toCString(pathToFaiFile)))
+                if (!save(this->faiIndex, seqan::toCString(pathToFaiFile)))
                 {
-                    printMessage("ClippedRead : Can't save FASTA index to '" + std::string(toCString(pathToFaiFile)) + "'.");
+                    printMessage("ClippedRead : Can't save FASTA index to '" + CharStringToStdString(pathToFaiFile) + "'.");
                     exit(1);
                 }
 
@@ -100,7 +100,7 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
             rID = bp.rightTemplateID;
         }
         else
-        { 
+        {
             begin = bp.minLeftPos;
             end = bp.maxLeftPos;
             rID = bp.leftTemplateID;
@@ -115,7 +115,7 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
             rID = bp.rightTemplateID;
         }
         else
-        { 
+        {
             begin = bp.minLeftPos;
             end = bp.maxLeftPos;
             rID = bp.leftTemplateID;
@@ -130,14 +130,14 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
             rID = bp.rightTemplateID;
         }
         else
-        { 
+        {
             begin = bp.minLeftPos;
             end = bp.maxLeftPos;
             rID = bp.leftTemplateID;
         }
     }
 
-    // extend search region 
+    // extend search region
     int32_t PESearchSize = this->getOptionManager()->getPairedEndSearchSize();
     int32_t searchSize = (end - begin + 1);
     if ( searchSize < PESearchSize)
@@ -147,7 +147,7 @@ void ClippedRead::setSearchRegionByOrientation(const BreakpointEvidence::ORIENTA
 bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
                                     Breakpoint* bp, \
                                     int32_t &bestScore, \
-                                    CharString& query, \
+                                    seqan::CharString& query, \
                                     BreakpointEvidence::SIDE searchSide, \
                                     bool useLocalAlignment, \
                                     bool useReverseComplement, \
@@ -161,11 +161,11 @@ bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
         return false;
 
     // get reference sequence
-    CharString ref;
+    seqan::CharString ref;
     this->getReferenceSequence(ref, refID, refBeginPosInGenome, refEndPosInGenome);
     if (ref == "")
         return false;
-    
+
     // search
     TFoundPosition newFoundPositions;
     int32_t newBestScore = bestScore;
@@ -223,7 +223,7 @@ bool ClippedRead::searchPairRegion (TFoundPosition& foundPositions, \
 bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
                                       Breakpoint* bp, \
                                       int32_t& bestScore, \
-                                      CharString& query, \
+                                      seqan::CharString& query, \
                                       BreakpointEvidence::SIDE searchSide, \
                                       bool useReverseComplement, \
                                       BreakpointEvidence::ORIENTATION orientation)
@@ -241,7 +241,7 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
         refID = bp->leftTemplateID;
     }
     else
-    {            
+    {
         refEndPosInGenome = bp->minRightPos - minSVSize;
         refBeginPosInGenome = refEndPosInGenome - searchSize;
         refID = bp->rightTemplateID;
@@ -250,7 +250,7 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
         return false;
 
     // get reference sequence
-    CharString ref;
+    seqan::CharString ref;
     this->getReferenceSequence(ref, refID, refBeginPosInGenome, refEndPosInGenome);
     if (ref == "")
         return false;
@@ -302,36 +302,36 @@ bool ClippedRead::searchTwilightZone (TFoundPosition& foundPositions, \
     return false;
 }
 
-bool ClippedRead::onlineSearchBySegment(TFoundPosition& foundPositions, CharString &ref, CharString &query, int32_t &bestScore)
+bool ClippedRead::onlineSearchBySegment(TFoundPosition& foundPositions, seqan::CharString &ref, seqan::CharString &query, int32_t &bestScore)
 {
     // search
-    int32_t currentScore = 0;  
+    int32_t currentScore = 0;
 
     int32_t k = 20;
     int32_t editDistanceInKmer = this->getOptionManager()->getClippedSeqErrorRate() * k;
-    int32_t editDistanceInTotal = this->getOptionManager()->getClippedSeqErrorRate() * length(query);
-    std::map<CharString, std::vector<TPosition> > kmers;
-    for(unsigned i=0; i < length(query) - k + 1; ++i)
-        kmers[infix(query, i, i+k)].push_back(i);
+    int32_t editDistanceInTotal = this->getOptionManager()->getClippedSeqErrorRate() * seqan::length(query);
+    std::map<seqan::CharString, std::vector<TPosition> > kmers;
+    for(unsigned i=0; i < seqan::length(query) - k + 1; ++i)
+        kmers[seqan::infix(query, i, i+k)].push_back(i);
 
     // search minimal match with Myer's bitvector
-    Finder<CharString> finder(ref);
-    Pattern<CharString, Myers<> > patternQuery(query);
+    seqan::Finder<seqan::CharString> finder(ref);
+    seqan::Pattern<seqan::CharString, seqan::Myers<> > patternQuery(query);
     for (auto itKmer = kmers.begin(); itKmer != kmers.end(); ++itKmer)
     {
-        CharString kmer = itKmer->first;
-        Pattern<CharString, Myers<> > patternKmer(kmer);
+        seqan::CharString kmer = itKmer->first;
+        seqan::Pattern<seqan::CharString, seqan::Myers<> > patternKmer(kmer);
 
         goBegin(finder);
-        clear(finder);
+        seqan::clear(finder);
         while (find(finder, patternKmer, -editDistanceInKmer))
         {
-            int32_t kmerScore = getScore(patternKmer);
+            int32_t kmerScore = seqan::getScore(patternKmer);
             int32_t editDistanceRemains = editDistanceInTotal + kmerScore;
-            while (findBegin(finder, patternKmer, kmerScore))
+            while (seqan::findBegin(finder, patternKmer, kmerScore))
             {
                 // extend search region
-                int32_t subjectBeginPos = beginPosition(finder);
+                int32_t subjectBeginPos = seqan::beginPosition(finder);
                 for (auto itPos = itKmer->second.begin(); itPos != itKmer->second.end(); ++itPos)
                 {
                     int32_t queryBeginPos = *itPos;
@@ -340,18 +340,18 @@ bool ClippedRead::onlineSearchBySegment(TFoundPosition& foundPositions, CharStri
 
                     // search region
                     int32_t subjectSearchBeginPos = subjectBeginPos - (queryBeginPos + editDistanceRemains);
-                    int32_t subjectSearchEndPos = subjectEndPos + ((length(query) - queryEndPos) + editDistanceRemains);
+                    int32_t subjectSearchEndPos = subjectEndPos + ((seqan::length(query) - queryEndPos) + editDistanceRemains);
                     if (subjectSearchBeginPos < 0)
                         subjectSearchBeginPos = 0;
                     if (subjectSearchEndPos > length(ref))
                         subjectSearchEndPos = length(ref);
 
                     // semi-global alignment (allow begin/end gaps in query)
-                    Align<CharString> align;
-                    resize(rows(align), 2);
-                    assignSource(row(align, 0), infix(ref, subjectSearchBeginPos, subjectSearchEndPos));
+                    seqan::Align<seqan::CharString> align;
+                    resize(seqan::rows(align), 2);
+                    assignSource(row(align, 0), seqan::infix(ref, subjectSearchBeginPos, subjectSearchEndPos));
                     assignSource(row(align, 1), query);
-                    currentScore = globalAlignment(align, Score<int, Simple>(0, -1, -1), AlignConfig<false, true, true, false>());
+                    currentScore = globalAlignment(align, seqan::Score<int, seqan::Simple>(0, -1, -1), seqan::AlignConfig<false, true, true, false>());
 
                     // got new best alignment
                     if (currentScore >= bestScore)
@@ -385,20 +385,20 @@ bool ClippedRead::onlineSearchBySegment(TFoundPosition& foundPositions, CharStri
             }
         }
     }
-    
+
     return false;
 }
 
 
-bool ClippedRead::alignByLocal(TFoundPosition& foundPositions, CharString& ref, CharString& query, int32_t& bestScore)
+bool ClippedRead::alignByLocal(TFoundPosition& foundPositions, seqan::CharString& ref, seqan::CharString& query, int32_t& bestScore)
 {
-    Align<CharString> align;
-    resize(rows(align), 2);
+    seqan::Align<seqan::CharString> align;
+    resize(seqan::rows(align), 2);
     assignSource(row(align, 0), ref);
     assignSource(row(align, 1), query);
 
-    int32_t currentScore = localAlignment(align, Score<int>(1, -1, -1, -2));
-    //int32_t currentScore = globalAlignment(align, Score<int, Simple>(3, -3, -2, -2), AlignConfig<true, true, true, true>());
+    int32_t currentScore = localAlignment(align, seqan::Score<int>(1, -1, -1, -2));
+    //int32_t currentScore = globalAlignment(align, seqan::Score<int, seqan::Simple>(3, -3, -2, -2), seqan::AlignConfig<true, true, true, true>());
     if (currentScore >= bestScore)
     {
         if (currentScore > bestScore)
@@ -406,12 +406,12 @@ bool ClippedRead::alignByLocal(TFoundPosition& foundPositions, CharString& ref, 
             foundPositions.clear();
             bestScore = currentScore;
         }
-        
+
         ClippedSequenceSegment s;
         s.sequenceSegment.beginPos = clippedBeginPosition(row(align, 0));
         s.sequenceSegment.endPos = clippedEndPosition(row(align, 0));
-        s.querySegment.beginPos = beginPosition(row(align, 1));
-        s.querySegment.endPos = endPosition(row(align, 1));
+        s.querySegment.beginPos = seqan::beginPosition(row(align, 1));
+        s.querySegment.endPos = seqan::endPosition(row(align, 1));
 
         /*
         std::cerr << align << "\n";
@@ -419,8 +419,8 @@ bool ClippedRead::alignByLocal(TFoundPosition& foundPositions, CharString& ref, 
         std::cerr << s.sequenceSegment.endPos << "\n";
         std::cerr << s.querySegment.beginPos << "\n";
         std::cerr << s.querySegment.endPos << "\n";
-        std::cerr << beginPosition(row(align, 1)) << "\n";
-        std::cerr << endPosition(row(align, 1)) << "\n";
+        std::cerr << seqan::beginPosition(row(align, 1)) << "\n";
+        std::cerr << seqan::endPosition(row(align, 1)) << "\n";
         std::cerr << query << "\n";
         */
 
@@ -431,20 +431,20 @@ bool ClippedRead::alignByLocal(TFoundPosition& foundPositions, CharString& ref, 
 }
 
 
-bool ClippedRead::alignByMyersBitVector(TFoundPosition& foundPositions, CharString& ref, CharString& query, int32_t& bestScore)
+bool ClippedRead::alignByMyersBitVector(TFoundPosition& foundPositions, seqan::CharString& ref, seqan::CharString& query, int32_t& bestScore)
 {
     int32_t currentScore = 0;
     int32_t currentAlignSize = 0;
     int32_t bestAlignSize = 0;
 
-    Finder<CharString> finder(ref);
-    Pattern<CharString, Myers<> > pattern(query);
+    seqan::Finder<seqan::CharString> finder(ref);
+    seqan::Pattern<seqan::CharString, seqan::Myers<> > pattern(query);
     while (find(finder, pattern, bestScore))
     {
-        while (findBegin(finder, pattern, getScore(pattern)))
+        while (seqan::findBegin(finder, pattern, seqan::getScore(pattern)))
         {
-            currentScore = getScore(pattern);
-            currentAlignSize = endPosition(finder) - beginPosition(finder);
+            currentScore = seqan::getScore(pattern);
+            currentAlignSize = seqan::endPosition(finder) - seqan::beginPosition(finder);
 
             if (currentScore >= bestScore && currentAlignSize >= bestAlignSize)
             {
@@ -456,24 +456,24 @@ bool ClippedRead::alignByMyersBitVector(TFoundPosition& foundPositions, CharStri
                 }
 
                 ClippedSequenceSegment s;
-                s.sequenceSegment.beginPos = beginPosition(finder);
-                s.sequenceSegment.endPos = endPosition(finder);
+                s.sequenceSegment.beginPos = seqan::beginPosition(finder);
+                s.sequenceSegment.endPos = seqan::endPosition(finder);
                 foundPositions.push_back(s);
             }
         }
     }
 
-    return (foundPositions.size() > 0); 
+    return (foundPositions.size() > 0);
 }
 
-void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end)
+void ClippedRead::getReferenceSequence(seqan::CharString& seq, TTemplateID templateID, TPosition start, TPosition end)
 {
-    clear(seq);
+    seqan::clear(seq);
     if (templateID == BreakpointEvidence::NOVEL_TEMPLATE || end >= templateSize[templateID])
         return;
 
     try {
-        readRegion(seq, this->faiIndex, templateID, start, end);    
+        seqan::readRegion(seq, this->faiIndex, templateID, start, end);
     }
     catch (...)
     {
@@ -481,19 +481,19 @@ void ClippedRead::getReferenceSequence(CharString& seq, TTemplateID templateID, 
     }
 }
 
-void ClippedRead::getReferenceSequence(CharString& seq, CharString chr, TPosition start, TPosition end)
+void ClippedRead::getReferenceSequence(seqan::CharString& seq, seqan::CharString chr, TPosition start, TPosition end)
 {
     unsigned templateID;
     if (!getIdByName(templateID, this->faiIndex, chr))
     {
-        clear(seq);
+        seqan::clear(seq);
         return;
     }
     else
         getReferenceSequence(seq, templateID, start, end);
 }
 
-void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
+void ClippedRead::parseReadRecord(TReadName &readName, seqan::BamAlignmentRecord &record)
 {
     if (record.mapQ < this->getOptionManager()->getMinMapQual())
         return;
@@ -510,7 +510,7 @@ void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &recor
     {
         BreakpointEvidence& be = *(itClip++);
         be.orientation = BreakpointEvidence::ORIENTATION::CLIPPED;
-            
+
         Breakpoint* bp = this->updateBreakpoint(be, isNew);
         if (isNew == true)
         {
@@ -520,9 +520,9 @@ void ClippedRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &recor
     }
 }
 
-void ClippedRead::getConsensusSequence(CharString& seq, Breakpoint* bp)
+void ClippedRead::getConsensusSequence(seqan::CharString& seq, Breakpoint* bp)
 {
-    clear(seq);
+    seqan::clear(seq);
     if (bp->clippedSequences.size() == 1)
     {
         seq = (bp->clippedSequences.begin())->second;
@@ -543,14 +543,14 @@ void ClippedRead::getConsensusSequence(CharString& seq, Breakpoint* bp)
         // do assembly
         if (this->getOptionManager()->isUsingAssembly())
         {
-            FragmentStore<> store;
+            seqan::FragmentStore<> store;
             for (auto it = bp->clippedSequences.begin(); it != bp->clippedSequences.end(); ++it)
                 appendRead(store, (*it).second);
 
-            ConsensusAlignmentOptions options;
+            seqan::ConsensusAlignmentOptions options;
             options.useContigID = false;
-            options.useGlobalAlignment = true;       
-            consensusAlignment(store, options);
+            options.useGlobalAlignment = true;
+            seqan::consensusAlignment(store, options);
 
             for( unsigned i=0; i < length(store.contigStore); ++i)
             {

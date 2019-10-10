@@ -35,29 +35,29 @@
 #include "misc.hpp"
 #include <cmath>
 
-void ReadDepth::parseReadRecord(CharString &id, BamAlignmentRecord &record)
-{  
+void ReadDepth::parseReadRecord(seqan::CharString &id, seqan::BamAlignmentRecord &record)
+{
     std::transform(readDepthInfo[record.rID].begin() + record.beginPos, \
                    readDepthInfo[record.rID].begin() + record.beginPos + getAlignmentLengthInRef(record),
                    readDepthInfo[record.rID].begin() + record.beginPos,
                    std::bind2nd(std::plus<TPosition>(), 1));
 }
 
-void ReadDepth::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
+void ReadDepth::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn)
 {
     for (unsigned i=0; i < length(header); ++i)
     {
-        if (header[i].type == BamHeaderRecordType::BAM_HEADER_REFERENCE)
+        if (header[i].type == seqan::BamHeaderRecordType::BAM_HEADER_REFERENCE)
         {
-            CharString templateName, templateLengthStr;
+            seqan::CharString templateName, templateLengthStr;
             getTagValue(templateName, "SN", header[i]);
             getTagValue(templateLengthStr, "LN", header[i]);
-            toCString(templateLengthStr);
-               
+            seqan::toCString(templateLengthStr);
+
             TTemplateID rID = BreakpointEvidence::NOVEL_TEMPLATE;
             TPosition templateLength = BreakpointEvidence::INVALID_POS;
-            getIdByName(rID, contigNamesCache(context(fileIn)), templateName);
-            templateLength = std::stol( std::string(toCString(templateLengthStr)) );
+            getIdByName(rID, contigNamesCache(seqan::context(fileIn)), templateName);
+            templateLength = std::stol( CharStringToStdString(templateLengthStr) );
 
             readDepthInfo[rID].resize(templateLength);
             std::fill(readDepthInfo[rID].begin(), readDepthInfo[rID].end(), 0);
@@ -145,10 +145,10 @@ void ReadDepth::calculateReadDepthStat(std::map<TTemplateID, unsigned>& svCntByT
         if (*it < 0.0) *it *= -1.0;
     }
     std::sort(backgroundDepth.begin(), backgroundDepth.end(), [](auto &left, auto &right) {return left < right;} );
-    double madDepth = MID_ELEMENT(backgroundDepth);   
+    double madDepth = MID_ELEMENT(backgroundDepth);
     //printTimeMessage("Depth median absolute deviation: " + std::to_string(madDepth));
     */
-    
+
     // Read-depth evidence
     double medianRE = 0.0, madRE = 0.0;
     medianRE = MID_ELEMENT(backgroundRE);
@@ -202,13 +202,13 @@ void ReadDepth::calculateReadDepthStat(std::map<TTemplateID, unsigned>& svCntByT
 }
 
 void ReadDepth::addUniformDepth(TTemplateID id, TPosition beginPos, TPosition size, unsigned depth)
-{  
+{
     int endPos = beginPos + size;
     if ( beginPos >= readDepthInfo[id].size() )
         beginPos = readDepthInfo[id].size() - 1;
     if ( endPos >= readDepthInfo[id].size() )
         endPos = readDepthInfo[id].size() - 1;
-   
+
     std::transform(readDepthInfo[id].begin() + beginPos, \
                    readDepthInfo[id].begin() + endPos,
                    readDepthInfo[id].begin() + beginPos,
@@ -272,7 +272,7 @@ void ReadDepth::getAvgReadDepth(double& leftAvg, double& rightAvg, TTemplateID t
         position = readDepthInfo[templateID].size() - 1;
 
     TPosition begin, end;
-    if (side == BreakpointEvidence::SIDE::LEFT)    
+    if (side == BreakpointEvidence::SIDE::LEFT)
     {
         if (position > windowSize)
             begin = position - windowSize;
