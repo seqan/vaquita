@@ -38,7 +38,7 @@
 #include <seqan/vcf_io.h>
 #include "breakpoint.hpp"
 
-class VcfRecordEnhanced : public VcfRecord
+class VcfRecordEnhanced : public seqan::VcfRecord
 {
     public :
         Breakpoint*     breakpoint = nullptr;
@@ -46,7 +46,7 @@ class VcfRecordEnhanced : public VcfRecord
         TPosition       targetPos = 0;  // for duplications and translocations
         std::string     chrName = "";   // optional for writing, necessary for loading
 
-        // evidences        
+        // evidences
         unsigned se = 0;
         unsigned pe = 0;
         unsigned ce = 0;
@@ -65,7 +65,7 @@ class VcfRecordEnhanced : public VcfRecord
         static std::string STATUS_PASS(void) { return "PASS"; }
         static std::string STATUS_FILTERED(void) { return "FILTERED"; }
         static std::string STATUS_MERGED(void) { return "MERGED"; }
-};  
+};
 
 struct less_than_vcf
 {
@@ -101,8 +101,8 @@ class SVManager
 
     public :
         SVManager() {}
-        SVManager(BreakpointManager& bpm) 
-        { 
+        SVManager(BreakpointManager& bpm)
+        {
             this->bpManager = &bpm;
             this->alnManager = bpm.getAlignmentManager();
             this->opManager = bpm.getOptionManager();

@@ -73,11 +73,11 @@ bool SVManager::filterImpreciseDel(void)
 
 bool SVManager::loadVcf(std::string& fileName, bool useAll)
 {
-    VcfFileIn vcfIn(toCString(fileName));
+    seqan::VcfFileIn vcfIn(seqan::toCString(fileName));
 
     // header
-    VcfHeader header;
-    readHeader(header, vcfIn);
+    seqan::VcfHeader header;
+    seqan::readHeader(header, vcfIn);
 
     // eg. RD=0.0;SVTYPE=DEL
     std::string deli1(";");
@@ -86,7 +86,7 @@ bool SVManager::loadVcf(std::string& fileName, bool useAll)
     while (!atEnd(vcfIn))
     {
         VcfRecordEnhanced record;
-        readRecord(record, vcfIn);
+        seqan::readRecord(record, vcfIn);
 
         // split by ";"
         std::vector<std::string> info;
@@ -140,12 +140,12 @@ bool SVManager::loadVcf(std::string& fileName, bool useAll)
             record.filter = VcfRecordEnhanced::STATUS::MERGED;
 
         record.imprecise = (mapInfo.find("IMPRECISE") != mapInfo.end());
-        record.chrName = CharStringToStdString(contigNames(context(vcfIn))[record.rID]);
+        record.chrName = CharStringToStdString(seqan::contigNames(seqan::context(vcfIn))[record.rID]);
 
         // filter
         if (useAll == false && record.filter != VcfRecordEnhanced::STATUS::PASS)
             continue;
-        
+
         // store it
         sv[mapInfo["SVTYPE"]].push_back(record);
     }
@@ -158,7 +158,7 @@ bool SVManager::writeVCF(void)
     // merge to a single list
     std::vector<VcfRecordEnhanced> vcfRecords;
     for (auto itSVType = this->sv.begin(); itSVType != this->sv.end(); ++itSVType)
-    {    
+    {
         std::sort(itSVType->second.begin(), itSVType->second.end(), less_than_vcf());
         int32_t nID = 1;
         for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
@@ -191,7 +191,7 @@ bool SVManager::writeVCF(void)
             // TODOs
             itSV->ref = "N"; // before SV
             itSV->format = "GT";
-            itSV->qual = VcfRecord::MISSING_QUAL();
+            itSV->qual = seqan::VcfRecord::MISSING_QUAL();
 
             if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
                 itSV->filter = VcfRecordEnhanced::STATUS_PASS();
@@ -203,7 +203,7 @@ bool SVManager::writeVCF(void)
                 itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
 
             // hetero & not phased
-            appendValue(itSV->genotypeInfos, "1/0");
+            seqan::appendValue(itSV->genotypeInfos, "1/0");
 
             // add
             vcfRecords.push_back(*itSV);
@@ -213,39 +213,39 @@ bool SVManager::writeVCF(void)
     std::sort(vcfRecords.begin(), vcfRecords.end(), less_than_vcf());
 
     // init.
-    VcfHeader vcfHeader;
-    VcfFileOut vcfOut;
-    open(vcfOut, std::cout, Vcf());
+    seqan::VcfHeader vcfHeader;
+    seqan::VcfFileOut vcfOut;
+    open(vcfOut, std::cout, seqan::Vcf());
 
     // headers
-    appendValue(vcfHeader, VcfHeaderRecord("fileformat", "VCFv4.1"));
-    appendValue(vcfHeader, VcfHeaderRecord("source", APP_NAME));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SC,Number=1,Type=Float,Description=\"Overall score\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=VT,Number=1,Type=Float,Description=\"Number of evidences types supporting the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Read depth descrepancy around the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RD,Number=1,Type=Float,Description=\"Read-depth around structural variation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=GC,Number=1,Type=Float,Description=\"GC content around the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CP,Number=1,Type=Float,Description=\"Shannon entropy around the SV\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP:TANDEM,Description=\"Tandem duplication\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=TRA,Description=\"Translocation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=BND,Description=\"Breakend\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("FORMAT", "<ID=GT,Number=1,Type=String,Description=\"Genotype\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("fileformat", "VCFv4.1"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("source", APP_NAME));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SC,Number=1,Type=Float,Description=\"Overall score\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=VT,Number=1,Type=Float,Description=\"Number of evidences types supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Read depth descrepancy around the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RD,Number=1,Type=Float,Description=\"Read-depth around structural variation\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=GC,Number=1,Type=Float,Description=\"GC content around the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CP,Number=1,Type=Float,Description=\"Shannon entropy around the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP:TANDEM,Description=\"Tandem duplication\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=TRA,Description=\"Translocation\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=BND,Description=\"Breakend\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("FORMAT", "<ID=GT,Number=1,Type=String,Description=\"Genotype\">"));
 
     // reference & sample
     for (int i=0; i < this->alnManager->getRefCount(); ++i)
-        appendValue(contigNames(context(vcfOut)), this->alnManager->getRefName(i));
-    appendValue(sampleNames(context(vcfOut)), "SAMPLE");
+        seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), this->alnManager->getRefName(i));
+    seqan::appendValue(seqan::sampleNames(seqan::context(vcfOut)), "SAMPLE");
 
     // write
-    writeHeader(vcfOut, vcfHeader);
+    seqan::writeHeader(vcfOut, vcfHeader);
     for (auto itSV = vcfRecords.begin(); itSV != vcfRecords.end(); ++itSV)
         writeRecord(vcfOut, *itSV);
 
@@ -268,7 +268,7 @@ bool SVManager::addTranslocation(VcfRecordEnhanced& orgRecord)
 bool SVManager::findTranslocation(void)
 {
     int32_t nID = 1;
-    int32_t adjTol = this->opManager->getAdjTol();  
+    int32_t adjTol = this->opManager->getAdjTol();
 
     // true : remove it from the duplication list
     std::vector<bool> dupRemoveList;
@@ -300,7 +300,7 @@ bool SVManager::findTranslocation(void)
                     record.ce = itDup->ce + itDupComp->ce;
                     record.re = std::max(itDup->re, itDupComp->re);
                     record.vt = std::max(itDup->vt, itDupComp->vt);
-                    if (itDup->status == VcfRecordEnhanced::STATUS::PASS || itDupComp->status == VcfRecordEnhanced::STATUS::PASS)                    
+                    if (itDup->status == VcfRecordEnhanced::STATUS::PASS || itDupComp->status == VcfRecordEnhanced::STATUS::PASS)
                         record.status = VcfRecordEnhanced::STATUS::PASS;
 
                     // marking to remove
@@ -341,7 +341,7 @@ bool SVManager::findTranslocation(void)
     std::vector<VcfRecordEnhanced> dupAfter;
     for (auto i = 0; i < this->sv[SVTYPE_DUPLICATION()].size(); ++i)
         if (dupRemoveList[i] == false)
-            dupAfter.push_back(this->sv[SVTYPE_DUPLICATION()][i]); 
+            dupAfter.push_back(this->sv[SVTYPE_DUPLICATION()][i]);
     this->sv[SVTYPE_DUPLICATION()].swap(dupAfter);
 
     return true;
@@ -374,7 +374,7 @@ bool SVManager::findDuplication(void)
         // skip this
         if (finalBreakpoint->filtered == true)
             found = false;
-     
+
         if (found == true)
         {
             std::vector<TPosition> leftExactPositions, centerExactPositions, rightExactPositions;
@@ -399,7 +399,7 @@ bool SVManager::findDuplication(void)
             auto itDel = this->sv[SVTYPE_DELETION()].begin();
             while( itDel != this->sv[SVTYPE_DELETION()].end() )
             {
-                bool matchFound = false;              
+                bool matchFound = false;
                 uint svLen = 0;
 
                 if (itDel->rID == finalBreakpoint->leftTemplateID)
@@ -481,7 +481,7 @@ bool SVManager::findDuplication(void)
                 // merged to this duplication
                 for (auto it=vDel.begin(); it != vDel.end(); ++it)
                     (*it)->status = VcfRecordEnhanced::STATUS::MERGED;
-            
+
                 // sorting
                 std::sort(leftExactPositions.begin(), leftExactPositions.end());
                 std::sort(leftImprecisePositions.begin(), leftImprecisePositions.end());
@@ -493,7 +493,7 @@ bool SVManager::findDuplication(void)
                 // fill records
                 record.id = SVTYPE_DUPLICATION() + "_" + std::to_string(nID++);
                 record.rID = finalBreakpoint->leftTemplateID;
-                record.breakpoint = bp;               
+                record.breakpoint = bp;
 
                 // get positions
                 TPosition leftPos, rightPos;
@@ -553,7 +553,7 @@ bool SVManager::findDuplication(void)
                         addTranslocation(record);
 
                         record.status = VcfRecordEnhanced::STATUS::MERGED;
-                        sv[SVTYPE_DUPLICATION()].push_back(record);                        
+                        sv[SVTYPE_DUPLICATION()].push_back(record);
                     }
                     else if (leftMatchFound)
                     {
@@ -608,7 +608,7 @@ bool SVManager::findInversion(void)
         // not an inversion
         if (bp->orientation != BreakpointEvidence::ORIENTATION::INVERTED)
             found = false;
-        
+
         // not an inversion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
@@ -642,7 +642,7 @@ bool SVManager::findInversion(void)
             record.vt = finalBreakpoint->vote;
             record.gc = finalBreakpoint->gcContent;
             record.cp = finalBreakpoint->sequenceComplexity;
-      
+
             record.breakpoint = bp;
             record.status = (finalBreakpoint->filtered) ? VcfRecordEnhanced::STATUS::FILTERED : VcfRecordEnhanced::STATUS::PASS;
             record.imprecise = finalBreakpoint->imprecise;
@@ -680,7 +680,7 @@ bool SVManager::findDeletion(void)
         // not a deletion
         if (bp->orientation != BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
             found = false;
-        
+
         // not a deletion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
@@ -706,7 +706,7 @@ bool SVManager::findDeletion(void)
             record.pe = info->pairedEndSupport;
             record.ce = info->clippedReadSupport;
             record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
-            record.rd = info->avgReadDepth; 
+            record.rd = info->avgReadDepth;
             record.vt = finalBreakpoint->vote;
             record.gc = finalBreakpoint->gcContent;
             record.cp = finalBreakpoint->sequenceComplexity;
@@ -748,7 +748,7 @@ bool SVManager::findBreakend(void)
         if (finalBreakpoint->filtered == true)
         {
             ++itBreakpoint;
-            continue;         
+            continue;
         }
 
         VcfRecordEnhanced record;
@@ -858,7 +858,7 @@ bool SVManager::orderSVByRankAgg(void)
                 vSe.push_back(std::make_pair(std::make_pair(itSV->se + itSV->ce, itSV->rd), &(*itSV)));
                 vPe.push_back(std::make_pair(std::make_pair(itSV->pe, itSV->rd), &(*itSV)));
                 vRe.push_back(std::make_pair(std::make_pair(itSV->re, itSV->rd), &(*itSV)));
-                
+
                 /*
                 double se = (double) (itSV->se + itSV->ce + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
                 double pe = (double) (itSV->pe + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
@@ -877,7 +877,7 @@ bool SVManager::orderSVByRankAgg(void)
 
     {
         // get individual rank.
-        auto sorter = [](TOrderingInfo l, TOrderingInfo r)->bool{ 
+        auto sorter = [](TOrderingInfo l, TOrderingInfo r)->bool{
         if (l.first.first != r.first.first)
             return l.first.first > r.first.first;
         else
@@ -905,7 +905,7 @@ bool SVManager::orderSVByRankAgg(void)
             if (this->opManager->doReadDepthAnalysis())
             {
                 if(mapRanks.find(vRe[rank].second) == mapRanks.end())
-                    mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));        
+                    mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));
                 mapRanks[vRe[rank].second].push_back(rank);
             }
         }
@@ -935,15 +935,15 @@ bool SVManager::orderSVByRankAgg(void)
                 prevOriginalRank = aggRank[i].first;
                 tieCount = 0;
             }
-            aggRank[i].second->sc = (1.0 - ( (double)correctedRank  /  (double) (aggRank.size() - 1))) * 100;            
+            aggRank[i].second->sc = (1.0 - ( (double)correctedRank  /  (double) (aggRank.size() - 1))) * 100;
         }
     }
 
     return true;
 }
 
-uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = false) 
-{ 
+uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = false)
+{
     int nCnt = 0;
     for (auto itSV = sv[svType].begin(); itSV != sv[svType].end(); ++itSV)
     {
