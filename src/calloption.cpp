@@ -62,10 +62,11 @@ void CallOptionManager::init_options()
     (*this).info.synopsis.push_back("call [\\fIOPTIONS\\fP] -r [\\fIreference.fa\\fP] [\\fIalignment.bam\\fP] > [\\fIout.vcf\\fP]");
 
     // mandatory arguments
-    (*this).add_positional_option(inputFile, "ALIGNMENT(.bam)", seqan3::input_file_validator({std::string("bam")}));
 
     // Options
     (*this).add_section("General");
+    (*this).add_option(inputFile, 'y', "shortRead", "Short read alignment(.bam)", seqan3::option_spec::DEFAULT, seqan3::input_file_validator({std::string("bam")}));
+    (*this).add_option(inputFileLong, 'z', "longRead", "Long read alignment(.bam)", seqan3::option_spec::DEFAULT, seqan3::input_file_validator({std::string("bam")}));
     (*this).add_option(referenceGenome, 'r', "referenceGenome", "Genome sequence file(.fa).", seqan3::option_spec::REQUIRED, seqan3::input_file_validator({std::string("fa")}));
     (*this).add_option(cutoff, 'c', "cutoff", "Minimum number of supporting read-pairs and split-reads.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(minVote, 'v', "minVote", "Minimum number of evidence types(=vote) that support SVs for rescue. -1: Supported by all evidence types.", seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{-1, INT32_MAX});
@@ -115,6 +116,10 @@ int CallOptionManager::parseCommandLine()
     try
     {
         (*this).parse();
+        if ((inputFile.empty() && inputFileLong.empty()) || (inputFile == inputFileLong))
+        {
+            throw seqan3::parser_invalid_argument{"Incorrect formatting of input files."};
+        }
     }
     catch(seqan3::parser_invalid_argument const & ext)
     {
@@ -126,10 +131,7 @@ int CallOptionManager::parseCommandLine()
         {
             parser_dummy.parse();
         }
-        catch(seqan3::parser_invalid_argument const &)
-        {
-
-        }
+        catch(seqan3::parser_invalid_argument const &) {}
         return 1;
     }
     return 0;
@@ -141,13 +143,19 @@ std::string CallOptionManager::getBooleanString(bool b)
     else return "False";
 }
 
+std::string CallOptionManager::getInputFile(bool longRead)
+{
+    return longRead ? inputFileLong : inputFile;
+}
 void CallOptionManager::printUserInput(void)
 {
     printMessage("==============================");
     printMessage(std::string(APP_NAME) + std::string(" ") + std::string(SEQAN_APP_VERSION));
     printMessage("==============================");
-    printMessage("[Input File]");
+    printMessage("[Short Read Input File]");
     printMessage(this->inputFile);
+    printMessage("[Long Read Input File]");
+    printMessage(this->inputFileLong);
     printMessage("[General options]");
     printMessage("- referenceGenome: " + this->referenceGenome);
     printMessage("- minMapQual: " + std::to_string(this->minMapQual));

@@ -45,6 +45,7 @@ class CallOptionManager : seqan3::argument_parser
 {
     private :
         std::string inputFile;
+        std::string inputFileLong;
         std::string outputFile;
         std::string outputFormat;
 
@@ -100,7 +101,7 @@ class CallOptionManager : seqan3::argument_parser
 
     	void init_options();
       	int parseCommandLine();
-        std::string getInputFile(void) { return inputFile; }
+        std::string getInputFile(bool longRead = false);
         void printUserInput(void);
         std::string getBooleanString(bool);
 
@@ -123,7 +124,7 @@ class CallOptionManager : seqan3::argument_parser
         int32_t getMaxOverlap(void) { return maxOverlap; }
 
         // for paired-end
-        bool doPairedEndAnalysis(void) { return !skipPairedEndRead; }
+        bool doPairedEndAnalysis(bool longRead = false) { return (!skipPairedEndRead && !longRead); }
         double getAbInsParam(void) { return abInsParam; }
         double getMinPairSupport(void) { return minPairSupport; }
         double getPairedEndSearchSize(void) { return pairedEndSearchSize;}
@@ -137,7 +138,7 @@ class CallOptionManager : seqan3::argument_parser
         int32_t isUsingAssembly(void) { return useAssembly; }
 
         // for read-depth analysis
-        bool doReadDepthAnalysis(void) { return !skipReadDepth; }
+        bool doReadDepthAnalysis(bool longRead = false) { return (!skipReadDepth && !longRead); }
         int32_t getReadDepthWindowSize(void) { return readDepthWindowSize; }
         double getReOutlierCutoff(void) { return reThreshold; }
         int32_t getSamplingNum(void) { return samplingNum; }
