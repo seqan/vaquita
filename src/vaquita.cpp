@@ -57,7 +57,9 @@ int callMain(int argc, char const ** argv)
 
     // Init.
     AlignmentManager alnMgr(oMgr);
+    // AlignmentManager alnMgr_longreads(oMgr);
     BreakpointManager bpMgr(alnMgr);
+    // BreakpointManager bpMgr_longreads(alnMgr_longreads);
     SVManager svMgr(bpMgr);
 
     // Start
@@ -84,6 +86,18 @@ int callMain(int argc, char const ** argv)
 
     // Merging
     RUN(result,"BREAKPOINT MERGING", bpMgr.merge());
+
+    // RUN(result,"BREAKPOINT MERGING", bpMgrShortRead.merge());
+    // RUN(result,"BREAKPOINT MERGING", bpMgrLongRead.merge());
+
+    // #1
+    // RUN(result,"BREAKPOINT MERGING", bpMgrShortRead.mergeFromLongRead(bpMgrLongRead));
+
+    // #2
+    // BreakpointManager combinedBpMgr(bpMgrShortRead, bpMgrLongRead)
+
+
+
     if (!result) return 3;
     printTimeMessage("Breakpoints after merging: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
