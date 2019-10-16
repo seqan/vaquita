@@ -34,6 +34,7 @@
 #ifndef APP_SV_H_
 #define APP_SV_H_
 
+#include <variant.h>
 #include <string>
 #include <seqan/vcf_io.h>
 #include "breakpoint.hpp"
@@ -65,6 +66,71 @@ class VcfRecordEnhanced : public seqan::VcfRecord
         static std::string STATUS_PASS(void) { return "PASS"; }
         static std::string STATUS_FILTERED(void) { return "FILTERED"; }
         static std::string STATUS_MERGED(void) { return "MERGED"; }
+
+        operator Variant() const
+        {
+            Variant tmp{};
+            if (this->alt == "<DEL>")
+                tmp.sv_type = SV_TYPE::DEL;
+            else if (this->alt == "<INS>")
+                tmp.sv_type = SV_TYPE::INS;
+            else if (this->alt == "<DUP>")
+                tmp.sv_type = SV_TYPE::DUP;
+            else if (this->alt == "<INV>")
+                tmp.sv_type = SV_TYPE::INV;
+            else if (this->alt == "<TRA>")
+                tmp.sv_type = SV_TYPE::TRA;
+            else
+                tmp.sv_type = SV_TYPE::UNKOWN;
+            tmp.sv_length = (int32_t) this->endPos - this->beginPos + 1;
+            tmp.ref_chrom = "chr" + std::to_string(this->rID + 1);
+            tmp.ref_pos = this->beginPos + 1;
+            tmp.ref_pos_end = (int32_t) this->endPos;
+            tmp.id = empty(this->id) ? "." : std::string{toCString(this->id)};
+            tmp.ref_seq = empty(this->ref) ? "." : std::string{toCString(this->ref)};
+            tmp.alt_seq = empty(this->id) ? "<.>" : std::string{toCString(this->alt)};
+            tmp.quality = (this->qual != this->qual) ? 0 : (double) this->qual;
+            if (this->status == STATUS::PASS)
+                tmp.filter = this->STATUS_PASS();
+            else if (this->status == STATUS::MERGED)
+                tmp.filter = this->STATUS_MERGED();
+            else
+                tmp.filter = this->STATUS_FILTERED();
+            tmp.info  = "SC=" + std::to_string(this->sc) + ";";
+            tmp.info += "VT=" + std::to_string(this->vt) + ";";
+            tmp.info += "SE=" + std::to_string(this->se) + ";";
+            tmp.info += "PE=" + std::to_string(this->pe) + ";";
+            tmp.info += "CE=" + std::to_string(this->ce) + ";";
+            tmp.info += "RE=" + std::to_string(this->re) + ";";
+            tmp.info += "RD=" + std::to_string(this->rd) + ";";
+            tmp.info += "GC=" + std::to_string(this->gc) + ";";
+            tmp.info += "CP=" + std::to_string(this->cp) + ";";
+            if (this->targetPos != BreakpointEvidence::INVALID_POS)
+                tmp.info += "TARGETPOS=" + std::to_string(this->targetPos)  + ";";
+            if (this->endPos != BreakpointEvidence::INVALID_POS)
+                tmp.info += "SVLEN=-" + std::to_string(this->endPos - this->beginPos + 1)  + ";";
+            tmp.info += "SVTYPE=" + std::string{seqan::toCString(this->alt)}.substr(1, 3);
+            tmp.format = empty(this->format) ? "." : std::string{toCString(this->format)};
+            for (unsigned i = 0; i < length(this->genotypeInfos); ++i)
+            {
+                if (empty(this->genotypeInfos[i]))
+                    tmp.samples.push_back(".");
+                else
+                    tmp.samples.push_back(std::string{toCString(this->genotypeInfos[i])});
+            }
+
+            return tmp;
+        }
+
+        void update(Variant const & tmp)
+        {
+            this->status = (tmp.filter == "PASS") ? STATUS::PASS : STATUS::FILTERED;
+            this->filter = seqan::CharString{tmp.filter};
+            this->beginPos = tmp.ref_pos;
+            this->endPos = tmp.ref_pos_end;
+            this->qual = (float) tmp.quality;
+            this->info = seqan::CharString{tmp.info};
+        }
 };
 
 struct less_than_vcf
