@@ -170,39 +170,43 @@ bool SVManager::writeVCF(void)
                 continue;
 
             // addtional informations
-            itSV->info  = "SC=" + std::to_string(itSV->sc) + ";";
-            itSV->info += "VT=" + std::to_string(itSV->vt) + ";";
-            itSV->info += "SE=" + std::to_string(itSV->se) + ";";
-            itSV->info += "PE=" + std::to_string(itSV->pe) + ";";
-            itSV->info += "CE=" + std::to_string(itSV->ce) + ";";
-            itSV->info += "RE=" + std::to_string(itSV->re) + ";";
-            itSV->info += "RD=" + std::to_string(itSV->rd) + ";";
-            itSV->info += "GC=" + std::to_string(itSV->gc) + ";";
-            itSV->info += "CP=" + std::to_string(itSV->cp) + ";";
-            if (itSV->targetPos != BreakpointEvidence::INVALID_POS)
-                itSV->info += "TARGETPOS=" + std::to_string(itSV->targetPos)  + ";";
-            if (itSV->endPos != BreakpointEvidence::INVALID_POS)
+            if (empty(itSV->info))
             {
-                itSV->info += "SVLEN=";
-                if (itSVType->first == SVTYPE_DELETION())
-                    itSV->info += "-";
-                itSV->info += std::to_string(itSV->endPos - itSV->beginPos + 1)  + ";";
+                itSV->info  = "SC=" + std::to_string(itSV->sc) + ";";
+                itSV->info += "VT=" + std::to_string(itSV->vt) + ";";
+                itSV->info += "SE=" + std::to_string(itSV->se) + ";";
+                itSV->info += "PE=" + std::to_string(itSV->pe) + ";";
+                itSV->info += "CE=" + std::to_string(itSV->ce) + ";";
+                itSV->info += "RE=" + std::to_string(itSV->re) + ";";
+                itSV->info += "RD=" + std::to_string(itSV->rd) + ";";
+                itSV->info += "GC=" + std::to_string(itSV->gc) + ";";
+                itSV->info += "CP=" + std::to_string(itSV->cp) + ";";
+                if (itSV->targetPos != BreakpointEvidence::INVALID_POS)
+                    itSV->info += "TARGETPOS=" + std::to_string(itSV->targetPos)  + ";";
+                if (itSV->endPos != BreakpointEvidence::INVALID_POS)
+                {
+                    itSV->info += "SVLEN=";
+                    if (itSVType->first == SVTYPE_DELETION())
+                        itSV->info += "-";
+                    itSV->info += std::to_string(itSV->endPos - itSV->beginPos + 1)  + ";";
+                }
+                itSV->info += "SVTYPE=" + itSVType->first;
             }
-            itSV->info += "SVTYPE=" + itSVType->first;
 
             // TODOs
             itSV->ref = "N"; // before SV
             itSV->format = "GT";
-            itSV->qual = seqan::VcfRecord::MISSING_QUAL();
+            itSV->qual = (itSV->qual != itSV->qual) ? seqan::VcfRecord::MISSING_QUAL() : itSV->qual;
 
-            if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
-                itSV->filter = VcfRecordEnhanced::STATUS_PASS();
-            else if (itSV->status == VcfRecordEnhanced::STATUS::FILTERED)
-                itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
-            else if (itSV->status == VcfRecordEnhanced::STATUS::MERGED)
-                itSV->filter = VcfRecordEnhanced::STATUS_MERGED();
-            else
-                itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
+            if (empty(itSV->filter))
+            {
+                if (itSV->status == VcfRecordEnhanced::STATUS::PASS)
+                    itSV->filter = VcfRecordEnhanced::STATUS_PASS();
+                else if (itSV->status == VcfRecordEnhanced::STATUS::MERGED)
+                    itSV->filter = VcfRecordEnhanced::STATUS_MERGED();
+                else
+                    itSV->filter = VcfRecordEnhanced::STATUS_FILTERED();
+            }
 
             // hetero & not phased
             seqan::appendValue(itSV->genotypeInfos, "1/0");
