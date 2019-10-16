@@ -31,6 +31,8 @@
 // ==========================================================================
 // Author: Jongkyu Kim <j.kim@fu-berlin.de>
 // ===========================================/===============================
+#include <iostream>
+
 #include "vaquita.hpp"
 #include "sv.hpp"
 #include "misc.hpp"
@@ -215,7 +217,13 @@ bool SVManager::writeVCF(void)
     // init.
     seqan::VcfHeader vcfHeader;
     seqan::VcfFileOut vcfOut;
-    open(vcfOut, std::cout, seqan::Vcf());
+    std::filebuf fb;
+    if (this->opManager->getOutputFile().empty())
+        open(vcfOut, std::cout, seqan::Vcf());
+    else
+        fb.open(this->opManager->getOutputFile(), std::ios::out);
+        std::ostream os(&fb);
+        open(vcfOut, os, seqan::Vcf());
 
     // headers
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("fileformat", "VCFv4.1"));

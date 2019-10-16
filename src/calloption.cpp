@@ -82,7 +82,7 @@ void CallOptionManager::init_options()
 
     (*this).add_section("Split-read evidence");
     (*this).add_option(maxSplit, 's', "maxSplit", "Maximum number of segments in a single read.", seqan3::option_spec::DEFAULT, int_val);
-    (*this).add_option(maxOverlap, 'o', "maxOverlap", "Maximum allowed overlaps between segements.", seqan3::option_spec::DEFAULT, int_val);
+    (*this).add_option(maxOverlap, 'x', "maxOverlap", "Maximum allowed overlaps between segements.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(minSplitReadSupport, 'b', "minSplitReadSupport", "SVs supported by >= b get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     (*this).add_section("Read-pair evidence");
@@ -104,11 +104,8 @@ void CallOptionManager::init_options()
     (*this).add_option(reThreshold, 'j', "reThreshold", "SVs satisfy read-depth evidence >= {Q3 + (IQR * h)} get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     // output options
-    /* not supported yet
-    addSection(*this, "Output");
-    addOption(*this, ArgParseOption("o", "output-file", "Specify an output file. Default: write the file to standard output.", ArgParseOption::OUTPUT_FILE));
-    setValidValues(*this, "output-file", ".vcf");
-    */
+    (*this).add_section("Output");
+    (*this).add_option(outputFile, 'o', "output-file", "Specify an output file. Default: write the file to standard output.", seqan3::option_spec::DEFAULT, seqan3::output_file_validator({std::string("vcf")}));
 }
 
 int CallOptionManager::parseCommandLine()
