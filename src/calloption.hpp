@@ -80,7 +80,7 @@ class CallOptionManager : seqan3::argument_parser
         std::string referenceGenome;
         double clippedSeqErrorRate{0.1};
         bool skipClippedRead{true};
-        bool useAssembly;
+        bool useAssembly{false};
 
         // for read-depth analysis
         double reThreshold{1.0};
@@ -102,6 +102,7 @@ class CallOptionManager : seqan3::argument_parser
     	void init_options();
       	int parseCommandLine();
         std::string getInputFile(bool longRead = false);
+        std::string getOutputFile(void) { return outputFile; }
         void printUserInput(void);
         std::string getBooleanString(bool);
 
