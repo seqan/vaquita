@@ -43,6 +43,7 @@
 #define MID_ELEMENT(x)                      x[x.size()/2]
 #define GET_MIN_MAX_ELEMENT(min,max,list)   min=FIRST_ELEMENT(list);max=LAST_ELEMENT(list)
 #define RUN(x, y, z)                        {startTimeMessage(y);(x=z);endTimeMessage(y);}
+#define RUN_IF(c, x, y, z)                  {if (c) { startTimeMessage(y);(x=z);endTimeMessage(y); } else { x = false; }}
 #define CharStringToStdString(x)            std::string(seqan::toCString(x))
 
 // ==========================================================================

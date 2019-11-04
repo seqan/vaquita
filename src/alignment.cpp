@@ -34,20 +34,18 @@
 #include "alignment.hpp"
 #include "misc.hpp"
 
-bool AlignmentManager::load(bool longRead)
+bool AlignmentManager::load()
 {
-    this->isLongRead = longRead;
-
     if( optionManager == NULL )
         return false;
 
-    if ( !open(this->bamFileIn, seqan::toCString(optionManager->getInputFile())) )
+    if ( !open(this->bamFileIn, seqan::toCString(optionManager->getInputFile(this->isLongRead))) )
     {
-        std::cerr << "ERROR: Could not open " << optionManager->getInputFile(longRead) << std::endl;
+        std::cerr << "ERROR: Could not open " << optionManager->getInputFile(this->isLongRead) << std::endl;
         return false;
     }
 
-    seqan::CharString baiFileName = optionManager->getInputFile();
+    seqan::CharString baiFileName = optionManager->getInputFile(this->isLongRead);
     baiFileName += ".bai";
     if (!open(this->baiIndex, seqan::toCString(baiFileName)))
     {
