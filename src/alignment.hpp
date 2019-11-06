@@ -131,12 +131,7 @@ class AlignmentManager
         std::map<TTemplateID, TPosition>* getTemplateLength(void) { return &templateLength; }
 
         CallOptionManager* getOptionManager(void) { return this->optionManager; }
-<<<<<<< HEAD
         void printRecord(seqan::BamAlignmentRecord &);
-        bool load(void);
-=======
-        void printRecord(BamAlignmentRecord &);
-        bool load(bool longRead = false);
->>>>>>> Allow alignment to choose between long and short reads
+        bool load();
 };
 #endif // APP_ALIGNMENT_H_

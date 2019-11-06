@@ -92,11 +92,10 @@ class BreakpointManager
 
     public :
     	BreakpointManager(AlignmentManager& aln) { init(aln); }
-        BreakpointManager(BreakpointManager& shortReads, BreakpointManager& longReads) { combineManagers(shortReads, longReads); }
         ~BreakpointManager();
 
     	void init(AlignmentManager&);
-        void combineManagers(BreakpointManager& bMgrSR, BreakpointManager& bMgrLR);
+        bool addLongBP(BreakpointManager& bpMgrLR);
         bool merge(void);
         bool find(void);
         bool applyFilter(void);

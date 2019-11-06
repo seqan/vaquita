@@ -55,14 +55,14 @@ int callMain(int argc, char const ** argv)
         return 2;
     }
 
-    // Init.
-    AlignmentManager alnMgr(oMgr);
-    AlignmentManager alnMgrLR(oMgr, lr = true);
-    BreakpointManager bpMgr(alnMgr);
-    BreakpointManager bpMgrLR(alnMgrLR);
-
     bool doShortReads{!oMgr.getInputFile().empty()};
     bool doLongReads{!oMgr.getInputFile(true).empty()};
+
+    // Init.
+    AlignmentManager alnMgr(oMgr);
+    AlignmentManager alnMgrLR(oMgr, doLongReads);
+    BreakpointManager bpMgr(alnMgr);
+    BreakpointManager bpMgrLR(alnMgrLR);
 
     // Start
     time(&startTime);
@@ -103,24 +103,29 @@ int callMain(int argc, char const ** argv)
         printTimeMessage(std::to_string(bpMgr.getClippedRead()->getBreakpointCount())  + " from long soft-clipped evidences.");
     }
 
+    // Combine long read breakpoints into short reads.
+    RUN_IF((doShortReads && doLongReads), result, "COMBINING LONG AND SHORT READ BREAKPOINTS", bpMgr.addLongBP(bpMgrLR));
     // Merging
-    RUN_IF(doShortReads, result, "SHORT READ BREAKPOINT MERGING", bpMgr.merge());
-    RUN_IF(doLongReads, result, "LONG READ BREAKPOINT MERGING", bpMgrLR.merge());
+    RUN_IF(doShortReads, result, "BREAKPOINT MERGING", bpMgr.merge());
+    if (!result) return 3;
+    RUN_IF(!doShortReads, result, "BREAKPOINT MERGING", bpMgrLR.merge());
+
+    BreakpointManager & finalBpMgr = doShortReads ? bpMgr : bpMgrLR;
 
     // #1
     // RUN(result,"BREAKPOINT MERGING", bpMgrShortRead.mergeFromLongRead(bpMgrLongRead));
 
     // #2
-    BreakpointManager combinedBpMgr(bpMgrShortRead, bpMgrLongRead);
-    SVManager svMgr(combinedBpMgr);
+    // BreakpointManager combinedBpMgr(bpMgrShortRead, bpMgrLongRead);
+    SVManager svMgr(finalBpMgr);
 
     if (!result) return 3;
-    printTimeMessage("Breakpoints after merging: " + std::to_string(combinedBpMgr.getMergedBreakpoint()->getBreakpointCount()));
+    printTimeMessage("Breakpoints after merging: " + std::to_string(finalBpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
     // Filtering
-    RUN(result,"BREAKPOINT FILTERING", combinedBpMgr.applyFilter());
+    RUN(result,"BREAKPOINT FILTERING", finalBpMgr.applyFilter());
     if (!result) return 3;
-    int bpCnt = combinedBpMgr.getMergedBreakpoint()->getBreakpointCount() - combinedBpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
+    int bpCnt = finalBpMgr.getMergedBreakpoint()->getBreakpointCount() - finalBpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
     printTimeMessage("Breakpoints after filtering: " + std::to_string(bpCnt));
 
     // SV Classification
