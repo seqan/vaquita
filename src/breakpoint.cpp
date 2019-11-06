@@ -49,7 +49,7 @@ bool BreakpointManager::addLongBP(BreakpointManager& bpMgrLR)
     {
         this->getSplitRead()->addNewBreakpoint(*itBreakpoint);
 
-        itBreakpoint = bpMgrLR.getSplitRead()->removeBreakpoint(*itBreakpoint);
+        itBreakpoint++;
     }
 
     // Add clipped read set from long reads to short read manager.
@@ -59,7 +59,7 @@ bool BreakpointManager::addLongBP(BreakpointManager& bpMgrLR)
     {
         this->getClippedRead()->addNewBreakpoint(*itBreakpoint);
 
-        itBreakpoint = bpMgrLR.getClippedRead()->removeBreakpoint(*itBreakpoint);
+        itBreakpoint++;
     }
 
     return true;
