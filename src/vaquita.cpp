@@ -59,8 +59,8 @@ int callMain(int argc, char const ** argv)
     bool doLongReads{!oMgr.getInputFile(true).empty()};
 
     // Init.
-    AlignmentManager alnMgr(oMgr);
-    AlignmentManager alnMgrLR(oMgr, doLongReads);
+    AlignmentManager alnMgr(oMgr, false);
+    AlignmentManager alnMgrLR(oMgr, true);
     BreakpointManager bpMgr(alnMgr);
     BreakpointManager bpMgrLR(alnMgrLR);
 
