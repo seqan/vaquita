@@ -99,8 +99,8 @@ int callMain(int argc, char const ** argv)
     }
     if (doLongReads)
     {
-        printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from long split-read evidences.");
-        printTimeMessage(std::to_string(bpMgr.getClippedRead()->getBreakpointCount())  + " from long soft-clipped evidences.");
+        printTimeMessage(std::to_string(bpMgrLR.getSplitRead()->getBreakpointCount())  + " from long split-read evidences.");
+        printTimeMessage(std::to_string(bpMgrLR.getClippedRead()->getBreakpointCount())  + " from long soft-clipped evidences.");
     }
 
     // Combine long read breakpoints into short reads.

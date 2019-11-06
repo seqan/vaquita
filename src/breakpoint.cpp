@@ -43,25 +43,23 @@
 bool BreakpointManager::addLongBP(BreakpointManager& bpMgrLR)
 {
     // Add split read set from long reads to short read manager.
-    printMessage("Adding split read breakpoints found in long reads.");
     TBreakpointSet* LRbreakpoints = bpMgrLR.getSplitRead()->getCandidateSet();
     auto itBreakpoint = LRbreakpoints->begin();
     while ( itBreakpoint != LRbreakpoints->end() )
     {
         this->getSplitRead()->addNewBreakpoint(*itBreakpoint);
 
-        itBreakpoint = this->getSplitRead()->removeBreakpoint(*itBreakpoint);
+        itBreakpoint = bpMgrLR.getSplitRead()->removeBreakpoint(*itBreakpoint);
     }
 
     // Add clipped read set from long reads to short read manager.
-    printMessage("Adding clipped read breakpoints found in long reads.");
     LRbreakpoints = bpMgrLR.getClippedRead()->getCandidateSet();
     itBreakpoint = LRbreakpoints->begin();
     while ( itBreakpoint != LRbreakpoints->end() )
     {
         this->getClippedRead()->addNewBreakpoint(*itBreakpoint);
 
-        itBreakpoint = this->getClippedRead()->removeBreakpoint(*itBreakpoint);
+        itBreakpoint = bpMgrLR.getClippedRead()->removeBreakpoint(*itBreakpoint);
     }
 
     return true;
