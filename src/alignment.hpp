@@ -53,10 +53,11 @@ class AlignmentManager
         CallOptionManager* optionManager;
 
         // bam record
+        bool                        isLongRead;
         seqan::BamFileIn            bamFileIn;
         seqan::BamHeader            bamHeader;
         seqan::BamIndex<seqan::Bai> baiIndex;
-        seqan::BamFileOut*          pBamFileOut;
+        seqan::BamFileOut*          pBamFileOut{nullptr};
 
         // breakpoint candidates
         BreakpointCandidate* splitRead;
@@ -90,7 +91,8 @@ class AlignmentManager
         ~AlignmentManager()
         {
             close(bamFileIn);
-            close(*pBamFileOut);
+            if (pBamFileOut)
+                close(*pBamFileOut);
         }
 
         void init(CallOptionManager & op, bool lr)
