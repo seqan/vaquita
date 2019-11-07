@@ -143,6 +143,7 @@ int callMain(int argc, char const ** argv)
 
     // Result
     RUN(result, "WRITE RESULT", svMgr.writeVCF());
+    if (oMgr.getWriteBreakpoint()) finalBpMgr.writeBreakpoint();
 
     time(&endTime);
     printMessage("Total elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");

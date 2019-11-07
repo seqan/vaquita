@@ -987,7 +987,7 @@ void BreakpointManager::writeBreakpoint()
     int32_t nID = 1;
 
     std::ofstream outfile;
-    outfile.open("breakpoints.tsv");
+    outfile.open(optionManager->getOutputFile().empty() ? "breakpoint.tsv" : optionManager->getOutputFile() + ".tsv");
 
     outfile << "leftChr\tleftPos\trightChr\trightPos\t";
     outfile << "orientation\tdepth\tSR\tPE\tCR\tRD\t";
@@ -999,9 +999,9 @@ void BreakpointManager::writeBreakpoint()
         ReadSupportInfo* info =  mergedBreakpoint->getReadSupport(bp);
         FinalBreakpointInfo* finalBreakpoint = this->getFinalBreakpointInfo(bp);
 
-        outfile << finalBreakpoint->leftTemplateID << "\t";
+        outfile << static_cast<unsigned int>(finalBreakpoint->leftTemplateID) << "\t";
         outfile << finalBreakpoint->leftPosition << "\t";
-        outfile << finalBreakpoint->rightTemplateID << "\t";
+        outfile << static_cast<unsigned int>(finalBreakpoint->rightTemplateID) << "\t";
         outfile << finalBreakpoint->rightPosition << "\t";
 
         //PROPERLY_ORIENTED, SWAPPED, INVERSED, NOT_DECIDED
