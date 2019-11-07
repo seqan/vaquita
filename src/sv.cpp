@@ -250,6 +250,11 @@ bool SVManager::writeVCF(void)
     // reference & sample
     for (int i=0; i < this->alnManager->getRefCount(); ++i)
         seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), this->alnManager->getRefName(i));
+    if (this->alnManagerLR != this->alnManager)
+    {
+        for (int i=0; i < this->alnManagerLR->getRefCount(); ++i)
+            seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), this->alnManagerLR->getRefName(i));
+    }
     seqan::appendValue(seqan::sampleNames(seqan::context(vcfOut)), "SAMPLE");
 
     // write

@@ -67,12 +67,14 @@ class BreakpointManager
     private :
         CallOptionManager*  optionManager;
         AlignmentManager*   alignmentManager;
+        AlignmentManager*   alignmentManagerLR;
         SplitRead*          splitReadBreakpoints;
         PairedEndRead*      pairedEndBreakpoints;
         ClippedRead*        clippedBreakpoints;
         ReadDepth*          readDepthBreakpoints;
         MergedCandidate*    mergedBreakpoints;
         bool                isLongRead;
+        bool                isCombined{false};
 
         std::map<Breakpoint*, FinalBreakpointInfo> finalBreakpoints;
         double averageReadDepth = 0.0;
@@ -107,6 +109,7 @@ class BreakpointManager
         void getNTCount(seqan::CharString&, unsigned&, unsigned&, unsigned&, unsigned&);
 
         inline AlignmentManager* getAlignmentManager(void) { return this->alignmentManager; }
+        inline AlignmentManager* getAlignmentManagerLR(void) { return isCombined ? this->alignmentManagerLR : this->alignmentManager; }
         inline CallOptionManager* getOptionManager(void) { return this->optionManager; }
         inline SplitRead* getSplitRead(void) { return this->splitReadBreakpoints; }
         inline PairedEndRead* getPairedEndRead(void) { return this->pairedEndBreakpoints; }

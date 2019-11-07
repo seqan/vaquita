@@ -88,6 +88,7 @@ class SVManager
         BreakpointManager* bpManager;
         CallOptionManager* opManager;
         AlignmentManager*  alnManager;
+        AlignmentManager*  alnManagerLR;
         TVcfBySVType sv;
 
         bool findDeletion(void);
@@ -105,6 +106,7 @@ class SVManager
         {
             this->bpManager = &bpm;
             this->alnManager = bpm.getAlignmentManager();
+            this->alnManagerLR = bpm.getAlignmentManagerLR();
             this->opManager = bpm.getOptionManager();
         }
         SVManager(std::string& fileName, bool useAll)

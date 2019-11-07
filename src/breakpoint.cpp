@@ -42,6 +42,9 @@
 
 bool BreakpointManager::addLongBP(BreakpointManager& bpMgrLR)
 {
+    this->isCombined = true;
+    this->alignmentManagerLR = bpMgrLR.getAlignmentManager();
+
     // Add split read set from long reads to short read manager.
     TBreakpointSet* LRbreakpoints = bpMgrLR.getSplitRead()->getCandidateSet();
     auto itBreakpoint = LRbreakpoints->begin();
