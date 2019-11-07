@@ -61,8 +61,8 @@ int callMain(int argc, char const ** argv)
     // Init.
     AlignmentManager alnMgr(oMgr, false);
     AlignmentManager alnMgrLR(oMgr, true);
-    BreakpointManager bpMgr(alnMgr);
-    BreakpointManager bpMgrLR(alnMgrLR);
+    BreakpointManager bpMgr(alnMgr, false);
+    BreakpointManager bpMgrLR(alnMgrLR, true);
 
     // Start
     time(&startTime);

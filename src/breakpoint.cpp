@@ -1043,9 +1043,12 @@ void BreakpointManager::init(AlignmentManager& aln)
 
 BreakpointManager::~BreakpointManager()
 {
-    delete this->splitReadBreakpoints;
+    if (!this->isLongRead || this->optionManager->getInputFile().empty())
+    {
+        delete this->splitReadBreakpoints;
+        delete this->clippedBreakpoints;
+    }
     delete this->pairedEndBreakpoints;
-    delete this->clippedBreakpoints;
     delete this->readDepthBreakpoints;
     delete this->mergedBreakpoints;
 }

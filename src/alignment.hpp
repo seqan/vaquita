@@ -87,7 +87,7 @@ class AlignmentManager
 
     public :
         AlignmentManager() : optionManager(NULL) {}
-    	AlignmentManager(CallOptionManager & op, bool lr = false) { init(op, lr); }
+    	AlignmentManager(CallOptionManager & op, bool lr = false) : isLongRead(lr) { init(op); }
         ~AlignmentManager()
         {
             close(bamFileIn);
@@ -95,9 +95,8 @@ class AlignmentManager
                 close(*pBamFileOut);
         }
 
-        void init(CallOptionManager & op, bool lr)
+        void init(CallOptionManager & op)
         {
-            isLongRead = lr;
             optionManager = &op;
             insertMedian = 0;
             insertDev = 0.0;

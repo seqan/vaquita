@@ -72,6 +72,7 @@ class BreakpointManager
         ClippedRead*        clippedBreakpoints;
         ReadDepth*          readDepthBreakpoints;
         MergedCandidate*    mergedBreakpoints;
+        bool                isLongRead;
 
         std::map<Breakpoint*, FinalBreakpointInfo> finalBreakpoints;
         double averageReadDepth = 0.0;
@@ -91,7 +92,7 @@ class BreakpointManager
         void addNewPositionsByClippedSequence(TFoundPosition&, Breakpoint*, bool isLeftClip);
 
     public :
-    	BreakpointManager(AlignmentManager& aln) { init(aln); }
+    	BreakpointManager(AlignmentManager& aln, bool lr = false) : isLongRead(lr) { init(aln); }
         ~BreakpointManager();
 
     	void init(AlignmentManager&);
