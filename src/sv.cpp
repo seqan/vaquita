@@ -264,7 +264,7 @@ bool SVManager::writeVCF(void)
     // write
     seqan::writeHeader(vcfOut, vcfHeader);
     for (auto itSV = vcfRecords.begin(); itSV != vcfRecords.end(); ++itSV)
-        writeRecord(vcfOut, *itSV);
+        seqan::writeRecord(vcfOut, *itSV);
 
     return true;
 }

@@ -173,6 +173,7 @@ int callMain(int argc, char const ** argv)
             if (oMgr.getReportFilteredResult() == true || deletions_sviper[vidx].status == VcfRecordEnhanced::STATUS::PASS)
             {
                 sviper::Variant tmp{deletions_sviper[vidx]};
+                tmp.ref_chrom = std::string{seqan::toCString(alnMgr.getRefName(std::stoi(tmp.ref_chrom)))};
                 sviper::polish_variant(tmp, info);
                 deletions_sviper[vidx].update(tmp);
             }

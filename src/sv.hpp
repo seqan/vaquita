@@ -83,12 +83,12 @@ class VcfRecordEnhanced : public seqan::VcfRecord
             else
                 tmp.sv_type = sviper::SV_TYPE::UNKOWN;
             tmp.sv_length = (int32_t) this->endPos - this->beginPos + 1;
-            tmp.ref_chrom = "chr" + std::to_string(this->rID + 1);
+            tmp.ref_chrom = std::to_string(this->rID);
             tmp.ref_pos = this->beginPos + 1;
             tmp.ref_pos_end = (int32_t) this->endPos;
-            tmp.id = empty(this->id) ? "." : std::string{toCString(this->id)};
-            tmp.ref_seq = empty(this->ref) ? "." : std::string{toCString(this->ref)};
-            tmp.alt_seq = empty(this->id) ? "<.>" : std::string{toCString(this->alt)};
+            tmp.id = empty(this->id) ? "." : std::string{seqan::toCString(this->id)};
+            tmp.ref_seq = empty(this->ref) ? "." : std::string{seqan::toCString(this->ref)};
+            tmp.alt_seq = empty(this->id) ? "<.>" : std::string{seqan::toCString(this->alt)};
             tmp.quality = (this->qual != this->qual) ? 0 : (double) this->qual;
             if (this->status == STATUS::PASS)
                 tmp.filter = this->STATUS_PASS();
@@ -110,13 +110,13 @@ class VcfRecordEnhanced : public seqan::VcfRecord
             if (this->endPos != BreakpointEvidence::INVALID_POS)
                 tmp.info += "SVLEN=-" + std::to_string(this->endPos - this->beginPos + 1)  + ";";
             tmp.info += "SVTYPE=" + std::string{seqan::toCString(this->alt)}.substr(1, 3);
-            tmp.format = empty(this->format) ? "." : std::string{toCString(this->format)};
+            tmp.format = empty(this->format) ? "." : std::string{seqan::toCString(this->format)};
             for (unsigned i = 0; i < length(this->genotypeInfos); ++i)
             {
                 if (empty(this->genotypeInfos[i]))
                     tmp.samples.push_back(".");
                 else
-                    tmp.samples.push_back(std::string{toCString(this->genotypeInfos[i])});
+                    tmp.samples.push_back(std::string{seqan::toCString(this->genotypeInfos[i])});
             }
 
             return tmp;
