@@ -34,7 +34,7 @@
 #ifndef APP_SV_H_
 #define APP_SV_H_
 
-#include <variant.h>
+#include <sviper/variant.h>
 #include <string>
 #include <seqan/vcf_io.h>
 #include "breakpoint.hpp"
@@ -67,21 +67,21 @@ class VcfRecordEnhanced : public seqan::VcfRecord
         static std::string STATUS_FILTERED(void) { return "FILTERED"; }
         static std::string STATUS_MERGED(void) { return "MERGED"; }
 
-        operator Variant() const
+        operator sviper::Variant() const
         {
-            Variant tmp{};
+            sviper::Variant tmp{};
             if (this->alt == "<DEL>")
-                tmp.sv_type = SV_TYPE::DEL;
+                tmp.sv_type = sviper::SV_TYPE::DEL;
             else if (this->alt == "<INS>")
-                tmp.sv_type = SV_TYPE::INS;
+                tmp.sv_type = sviper::SV_TYPE::INS;
             else if (this->alt == "<DUP>")
-                tmp.sv_type = SV_TYPE::DUP;
+                tmp.sv_type = sviper::SV_TYPE::DUP;
             else if (this->alt == "<INV>")
-                tmp.sv_type = SV_TYPE::INV;
+                tmp.sv_type = sviper::SV_TYPE::INV;
             else if (this->alt == "<TRA>")
-                tmp.sv_type = SV_TYPE::TRA;
+                tmp.sv_type = sviper::SV_TYPE::TRA;
             else
-                tmp.sv_type = SV_TYPE::UNKOWN;
+                tmp.sv_type = sviper::SV_TYPE::UNKOWN;
             tmp.sv_length = (int32_t) this->endPos - this->beginPos + 1;
             tmp.ref_chrom = "chr" + std::to_string(this->rID + 1);
             tmp.ref_pos = this->beginPos + 1;
@@ -122,7 +122,7 @@ class VcfRecordEnhanced : public seqan::VcfRecord
             return tmp;
         }
 
-        void update(Variant const & tmp)
+        void update(sviper::Variant const & tmp)
         {
             this->status = (tmp.filter == "PASS") ? STATUS::PASS : STATUS::FILTERED;
             this->filter = seqan::CharString{tmp.filter};

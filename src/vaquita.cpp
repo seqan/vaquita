@@ -42,9 +42,9 @@
 
 #include <seqan3/argument_parser/all.hpp>
 
-#include <sviper.h>
-#include <io.h>
-#include <auxiliary.h>
+#include <sviper/sviper.h>
+#include <sviper/io.h>
+#include <sviper/auxiliary.h>
 
 int callMain(int argc, char const ** argv)
 {
@@ -146,18 +146,18 @@ int callMain(int argc, char const ** argv)
     RUN(result,"SV PRIORITIZATION", svMgr.orderSV());
 
     {
-        CmdOptions options(oMgr.getInputFile(true), oMgr.getInputFile(), oMgr.getOutputFile(), oMgr.getReferenceGenome());
-        input_output_information info{options};
+        sviper::CmdOptions options(oMgr.getInputFile(true), oMgr.getInputFile(), oMgr.getOutputFile(), oMgr.getReferenceGenome());
+        sviper::input_output_information info{options};
 
         // Check files
-        if (!open_file_success(info.long_read_bai, (info.cmd_options.long_read_file_name + ".bai").c_str()) ||
-            !open_file_success(info.short_read_bai, (info.cmd_options.short_read_file_name + ".bai").c_str()) ||
-            !open_file_success(info.log_file, (info.cmd_options.output_prefix + ".log").c_str()))
+        if (!sviper::open_file_success(info.long_read_bai, (info.cmd_options.long_read_file_name + ".bai").c_str()) ||
+            !sviper::open_file_success(info.short_read_bai, (info.cmd_options.short_read_file_name + ".bai").c_str()) ||
+            !sviper::open_file_success(info.log_file, (info.cmd_options.output_prefix + ".log").c_str()))
             return 1;
 
         // Prepare file hangles for parallel computing
         // -------------------------------------------------------------------------
-        RUN(result, "SViper: PREP PARALLEL PROCESSING", prep_file_handles(info));
+        RUN(result, "SViper: PREP PARALLEL PROCESSING", sviper::prep_file_handles(info));
 
         // Polish variants
         // -------------------------------------------------------------------------
@@ -172,8 +172,8 @@ int callMain(int argc, char const ** argv)
         {
             if (oMgr.getReportFilteredResult() == true || deletions_sviper[vidx].status == VcfRecordEnhanced::STATUS::PASS)
             {
-                Variant tmp{deletions_sviper[vidx]};
-                polish_variant(tmp, info);
+                sviper::Variant tmp{deletions_sviper[vidx]};
+                sviper::polish_variant(tmp, info);
                 deletions_sviper[vidx].update(tmp);
             }
         } // parallel for loop
