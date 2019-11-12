@@ -145,6 +145,7 @@ int callMain(int argc, char const ** argv)
     // SV ordering
     RUN(result,"SV PRIORITIZATION", svMgr.orderSV());
 
+    if (doShortReads && doLongReads)
     {
         sviper::CmdOptions options(oMgr.getInputFile(true), oMgr.getInputFile(), oMgr.getOutputFile(), oMgr.getReferenceGenome());
         sviper::input_output_information info{options};
