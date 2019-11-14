@@ -254,6 +254,11 @@ bool SVManager::writeVCF(void)
     // reference & sample
     for (int i=0; i < this->alnManager->getRefCount(); ++i)
         seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), this->alnManager->getRefName(i));
+    if (this->alnManagerLR != this->alnManager)
+    {
+        for (int i=0; i < this->alnManagerLR->getRefCount(); ++i)
+            seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), this->alnManagerLR->getRefName(i));
+    }
     seqan::appendValue(seqan::sampleNames(seqan::context(vcfOut)), "SAMPLE");
 
     // write
@@ -907,14 +912,14 @@ bool SVManager::orderSVByRankAgg(void)
                 mapRanks.insert(std::make_pair(vSe[rank].second, std::vector<unsigned int>()));
             mapRanks[vSe[rank].second].push_back(rank);
 
-            if (this->opManager->doPairedEndAnalysis())
+            if (this->opManager->doPairedEndAnalysis(this->alnManager->isLongRead))
             {
                 if(mapRanks.find(vPe[rank].second) == mapRanks.end())
                     mapRanks.insert(std::make_pair(vPe[rank].second, std::vector<unsigned int>()));
                  mapRanks[vPe[rank].second].push_back(rank);
             }
 
-            if (this->opManager->doReadDepthAnalysis())
+            if (this->opManager->doReadDepthAnalysis(this->alnManager->isLongRead))
             {
                 if(mapRanks.find(vRe[rank].second) == mapRanks.end())
                     mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));

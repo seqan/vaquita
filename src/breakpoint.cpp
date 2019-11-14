@@ -40,13 +40,41 @@
 #include "misc.hpp"
 #include "breakpoint.hpp"
 
+bool BreakpointManager::addLongBP(BreakpointManager& bpMgrLR)
+{
+    this->isCombined = true;
+    this->alignmentManagerLR = bpMgrLR.getAlignmentManager();
+
+    // Add split read set from long reads to short read manager.
+    TBreakpointSet* LRbreakpoints = bpMgrLR.getSplitRead()->getCandidateSet();
+    auto itBreakpoint = LRbreakpoints->begin();
+    while ( itBreakpoint != LRbreakpoints->end() )
+    {
+        this->getSplitRead()->addNewBreakpoint(*itBreakpoint);
+
+        itBreakpoint++;
+    }
+
+    // Add clipped read set from long reads to short read manager.
+    LRbreakpoints = bpMgrLR.getClippedRead()->getCandidateSet();
+    itBreakpoint = LRbreakpoints->begin();
+    while ( itBreakpoint != LRbreakpoints->end() )
+    {
+        this->getClippedRead()->addNewBreakpoint(*itBreakpoint);
+
+        itBreakpoint++;
+    }
+
+    return true;
+}
+
 bool BreakpointManager::merge(void)
 {
     bool result = false;
 
     RUN(result,"From split-read evidences.", mergeSplitRead());
     printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
-    if (this->optionManager->doPairedEndAnalysis())
+    if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"From read-pair evidences.", mergePairedEnd());
         printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
@@ -59,7 +87,7 @@ bool BreakpointManager::merge(void)
     }
 
     // 2) add imprecise breakpoints
-    if (this->optionManager->doPairedEndAnalysis())
+    if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"Add imprecise breakpoints to the merged set.", addImpreciseBreakpoints());
         printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
@@ -70,7 +98,7 @@ bool BreakpointManager::merge(void)
     printTimeMessage("Total breakpoints: " + std::to_string(this->getMergedBreakpoint()->getBreakpointCount()));
 
     // 4) add read-depth based information (needs final breakpoints)
-    if (this->optionManager->doReadDepthAnalysis())
+    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         RUN(result,"Calculate read-depth information", calculateReadDepth());
 
     // 5) sequence featre
@@ -405,7 +433,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 BreakpointCandidate::updateRightMinMaxPos(newBp);
 
                 // update depth
-                if (this->optionManager->doReadDepthAnalysis())
+                if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                 {
                     this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                newPos, \
@@ -429,7 +457,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                 BreakpointCandidate::updateLeftMinMaxPos(newBp);
 
                 // update depth
-                if (this->optionManager->doReadDepthAnalysis())
+                if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                 {
                     this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                newPos, \
@@ -468,7 +496,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     BreakpointCandidate::updateLeftMinMaxPos(newBp);
 
                     // update depth
-                    if (this->optionManager->doReadDepthAnalysis())
+                    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                     {
                         this->getReadDepth()->addUniformDepth(newBp->leftTemplateID, \
                                                                    newPos, \
@@ -504,7 +532,7 @@ void BreakpointManager::addNewPositionsByClippedSequence(TFoundPosition& foundPo
                     BreakpointCandidate::updateRightMinMaxPos(newBp);
 
                     // update depth
-                    if (this->optionManager->doReadDepthAnalysis())
+                    if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
                     {
                         this->getReadDepth()->addUniformDepth(newBp->rightTemplateID, \
                                                                    newPos, \
@@ -680,7 +708,7 @@ bool BreakpointManager::find(void)
         return false;
 
     // paired-end analysis
-    if (this->getOptionManager()->doPairedEndAnalysis())
+    if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
     {
         RUN(result,"Paired-end analysis", this->getPairedEndRead()->analyze());
         if (result == false)
@@ -820,9 +848,9 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->getOptionManager()->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
         this->getOptionManager()->setMinVote(minVote);
     }
@@ -850,9 +878,9 @@ bool BreakpointManager::filterByEvidenceSumAndVote(void)
         int32_t vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
-        if (this->getOptionManager()->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead) && info->pairedEndSupport >= peTH)
             vote += 1;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         {
             double re = 0.0;
             if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
@@ -901,9 +929,9 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
     if (minVote < 0)
     {
         minVote = 1;
-        if (this->getOptionManager()->doPairedEndAnalysis())
+        if (this->getOptionManager()->doPairedEndAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
-        if (this->getOptionManager()->doReadDepthAnalysis())
+        if (this->getOptionManager()->doReadDepthAnalysis(this->alignmentManager->isLongRead))
             ++minVote;
         this->getOptionManager()->setMinVote(minVote);
     }
@@ -927,9 +955,9 @@ bool BreakpointManager::rescueByCombinedEvidence(void)
         unsigned vote = 0;
         if ((info->splitReadSupport + info->clippedReadSupport) >= seTH)
             vote += 1;
-        if (this->optionManager->doPairedEndAnalysis() && info->pairedEndSupport >= peTH)
+        if (this->optionManager->doPairedEndAnalysis(this->alignmentManager->isLongRead) && info->pairedEndSupport >= peTH)
             vote += 1;
-        if (this->optionManager->doReadDepthAnalysis())
+        if (this->optionManager->doReadDepthAnalysis(this->alignmentManager->isLongRead))
         {
             double re = 0.0;
             if (info->leftReadDepthDiffScore > info->rightReadDepthDiffScore)
@@ -962,7 +990,7 @@ void BreakpointManager::writeBreakpoint()
     int32_t nID = 1;
 
     std::ofstream outfile;
-    outfile.open("breakpoints.tsv");
+    outfile.open(optionManager->getOutputFile().empty() ? "breakpoint.tsv" : optionManager->getOutputFile() + ".tsv");
 
     outfile << "leftChr\tleftPos\trightChr\trightPos\t";
     outfile << "orientation\tdepth\tSR\tPE\tCR\tRD\t";
@@ -974,9 +1002,9 @@ void BreakpointManager::writeBreakpoint()
         ReadSupportInfo* info =  mergedBreakpoint->getReadSupport(bp);
         FinalBreakpointInfo* finalBreakpoint = this->getFinalBreakpointInfo(bp);
 
-        outfile << finalBreakpoint->leftTemplateID << "\t";
+        outfile << static_cast<unsigned int>(finalBreakpoint->leftTemplateID) << "\t";
         outfile << finalBreakpoint->leftPosition << "\t";
-        outfile << finalBreakpoint->rightTemplateID << "\t";
+        outfile << static_cast<unsigned int>(finalBreakpoint->rightTemplateID) << "\t";
         outfile << finalBreakpoint->rightPosition << "\t";
 
         //PROPERLY_ORIENTED, SWAPPED, INVERSED, NOT_DECIDED
@@ -1018,9 +1046,12 @@ void BreakpointManager::init(AlignmentManager& aln)
 
 BreakpointManager::~BreakpointManager()
 {
-    delete this->splitReadBreakpoints;
+    if (!this->isLongRead || this->optionManager->getInputFile().empty())
+    {
+        delete this->splitReadBreakpoints;
+        delete this->clippedBreakpoints;
+    }
     delete this->pairedEndBreakpoints;
-    delete this->clippedBreakpoints;
     delete this->readDepthBreakpoints;
     delete this->mergedBreakpoints;
 }

@@ -59,40 +59,77 @@ int callMain(int argc, char const ** argv)
         return 2;
     }
 
+    bool doShortReads{!oMgr.getInputFile().empty()};
+    bool doLongReads{!oMgr.getInputFile(true).empty()};
+
     // Init.
-    AlignmentManager alnMgr(oMgr);
-    BreakpointManager bpMgr(alnMgr);
-    SVManager svMgr(bpMgr);
+    AlignmentManager alnMgr(oMgr, false);
+    AlignmentManager alnMgrLR(oMgr, true);
+    BreakpointManager bpMgr(alnMgr, false);
+    BreakpointManager bpMgrLR(alnMgrLR, true);
 
     // Start
     time(&startTime);
     oMgr.printUserInput();
 
     // Loading & extraction
-    RUN(result, "EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    RUN_IF(doShortReads, result, "SHORT READ EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    if (!result && !doLongReads) return 3;
+    RUN_IF(doLongReads, result, "LONG READ EVIDENCE EXTRACTION", alnMgrLR.load());
     if (!result) return 3;
     printTimeMessage("Found evidences");
-    printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from split-reads.");
-    printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from discordant read-pairs.");
-    printTimeMessage(std::to_string(alnMgr.getClippedReadCount()) + " from soft-clipped reads.");
+    if (doShortReads)
+    {
+        printTimeMessage(std::to_string(alnMgr.getSplitReadCount()) + " from short split-reads.");
+        printTimeMessage(std::to_string(alnMgr.getPairedReadCount()) + " from short discordant read-pairs.");
+        printTimeMessage(std::to_string(alnMgr.getClippedReadCount()) + " from short soft-clipped reads.");
+    }
+    if (doLongReads)
+    {
+        printTimeMessage(std::to_string(alnMgrLR.getSplitReadCount()) + " from long split-reads.");
+        printTimeMessage(std::to_string(alnMgrLR.getClippedReadCount()) + " from long soft-clipped reads.");
+    }
 
     // Identification
-    RUN(result,"BREAKPOINT IDENTIFICATION", bpMgr.find());
+    RUN_IF(doShortReads, result, "SHORT READ BREAKPOINT IDENTIFICATION", bpMgr.find());
+    RUN_IF(doLongReads, result, "LONG READ BREAKPOINT IDENTIFICATION", bpMgrLR.find());
     if (!result) return 3;
     printTimeMessage("Found breakpoints");
-    printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from split-read evidences.");
-    printTimeMessage(std::to_string(bpMgr.getPairedEndRead()->getBreakpointCount())  + " from read-pair evidences.");
-    printTimeMessage(std::to_string(bpMgr.getClippedRead()->getBreakpointCount())  + " from soft-clipped evidences.");
+    if (doShortReads)
+    {
+        printTimeMessage(std::to_string(bpMgr.getSplitRead()->getBreakpointCount())  + " from short split-read evidences.");
+        printTimeMessage(std::to_string(bpMgr.getPairedEndRead()->getBreakpointCount())  + " from short read-pair evidences.");
+        printTimeMessage(std::to_string(bpMgr.getClippedRead()->getBreakpointCount())  + " from short soft-clipped evidences.");
+    }
+    if (doLongReads)
+    {
+        printTimeMessage(std::to_string(bpMgrLR.getSplitRead()->getBreakpointCount())  + " from long split-read evidences.");
+        printTimeMessage(std::to_string(bpMgrLR.getClippedRead()->getBreakpointCount())  + " from long soft-clipped evidences.");
+    }
 
+    // Combine long read breakpoints into short reads.
+    RUN_IF((doShortReads && doLongReads), result, "COMBINING LONG AND SHORT READ BREAKPOINTS", bpMgr.addLongBP(bpMgrLR));
     // Merging
-    RUN(result,"BREAKPOINT MERGING", bpMgr.merge());
+    RUN_IF(doShortReads, result, "BREAKPOINT MERGING", bpMgr.merge());
     if (!result) return 3;
-    printTimeMessage("Breakpoints after merging: " + std::to_string(bpMgr.getMergedBreakpoint()->getBreakpointCount()));
+    RUN_IF(!doShortReads, result, "BREAKPOINT MERGING", bpMgrLR.merge());
+
+    BreakpointManager & finalBpMgr = doShortReads ? bpMgr : bpMgrLR;
+
+    // #1
+    // RUN(result,"BREAKPOINT MERGING", bpMgrShortRead.mergeFromLongRead(bpMgrLongRead));
+
+    // #2
+    // BreakpointManager combinedBpMgr(bpMgrShortRead, bpMgrLongRead);
+    SVManager svMgr(finalBpMgr);
+
+    if (!result) return 3;
+    printTimeMessage("Breakpoints after merging: " + std::to_string(finalBpMgr.getMergedBreakpoint()->getBreakpointCount()));
 
     // Filtering
-    RUN(result,"BREAKPOINT FILTERING", bpMgr.applyFilter());
+    RUN(result,"BREAKPOINT FILTERING", finalBpMgr.applyFilter());
     if (!result) return 3;
-    int bpCnt = bpMgr.getMergedBreakpoint()->getBreakpointCount() - bpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
+    int bpCnt = finalBpMgr.getMergedBreakpoint()->getBreakpointCount() - finalBpMgr.getMergedBreakpoint()->getFilteredBreakpointCount();
     printTimeMessage("Breakpoints after filtering: " + std::to_string(bpCnt));
 
     // SV Classification
@@ -149,6 +186,7 @@ int callMain(int argc, char const ** argv)
 
     // Result
     RUN(result, "WRITE RESULT", svMgr.writeVCF());
+    if (oMgr.getWriteBreakpoint()) finalBpMgr.writeBreakpoint();
 
     time(&endTime);
     printMessage("Total elapsed time : " + std::to_string((int)difftime(endTime,startTime)) + " seconds.");

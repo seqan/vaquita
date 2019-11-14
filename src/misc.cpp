@@ -34,13 +34,15 @@
 #include <iostream>
 #include "misc.hpp"
 
+#include <seqan3/core/debug_stream.hpp>
+
 // ============================================================================
 // Functions
 // ============================================================================
 time_t _t1, _t2;
 void printMessage(std::string msg)
 {
-    std::cerr << msg << std::endl;
+    seqan3::debug_stream << msg << std::endl;
 }
 
 void printTimeMessage(std::string msg)
@@ -75,8 +77,8 @@ void splitString(std::vector<std::string>& v, std::string& s, std::string& d)
     // split strings
     size_t last = 0, next = 0;
     v.clear();
-    while ((next = s.find(d, last)) != std::string::npos) 
-    { 
+    while ((next = s.find(d, last)) != std::string::npos)
+    {
         v.push_back(s.substr(last, next-last));
         last = next + d.length();
     }
