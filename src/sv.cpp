@@ -239,6 +239,7 @@ bool SVManager::writeVCF(void)
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=VT,Number=1,Type=Float,Description=\"Number of evidences types supporting the SV\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CE,Number=1,Type=Integer,Description=\"Number of split reads supporting the SV\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RE,Number=1,Type=Float,Description=\"Read depth descrepancy around the SV\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=RD,Number=1,Type=Float,Description=\"Read-depth around structural variation\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=GC,Number=1,Type=Float,Description=\"GC content around the SV\">"));
@@ -264,7 +265,7 @@ bool SVManager::writeVCF(void)
     // write
     seqan::writeHeader(vcfOut, vcfHeader);
     for (auto itSV = vcfRecords.begin(); itSV != vcfRecords.end(); ++itSV)
-        writeRecord(vcfOut, *itSV);
+        seqan::writeRecord(vcfOut, *itSV);
 
     return true;
 }
