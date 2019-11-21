@@ -84,7 +84,11 @@ void CallOptionManager::init_options()
     (*this).add_option(maxSplit, 's', "maxSplit", "Maximum number of segments in a single read.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(maxSplitLong, 'g', "maxSplitLong", "Maximum number of segments in a single long read. Only relevant for long read input (-z)", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(maxOverlap, 'x', "maxOverlap", "Maximum allowed overlaps between segments.", seqan3::option_spec::DEFAULT, int_val);
+<<<<<<< HEAD
     (*this).add_option(maxOverlapLong, 'k', "maxOverlapLong", "Maximum allowed overlaps between long read segments. Only relevant for long read input (-z)", seqan3::option_spec::DEFAULT, int_val);
+=======
+    (*this).add_option(maxOverlapLong, 'h', "maxOverlapLong", "Maximum allowed overlaps between long read segments. Only relevant for long read input (-z)", seqan3::option_spec::DEFAULT, int_val);
+>>>>>>> Create default maxSplit and maxOverlap values specific to long read input.
     (*this).add_option(minSplitReadSupport, 'b', "minSplitReadSupport", "SVs supported by >= b get a vote.", seqan3::option_spec::DEFAULT, dbl_val);
 
     (*this).add_section("Read-pair evidence");
