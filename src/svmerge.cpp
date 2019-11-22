@@ -169,6 +169,11 @@ bool SVMerge::merge(void)
                 record.dp[itSV->additionalInfo] += (unsigned) itSV->rd;
                 ++record.recordNum[itSV->additionalInfo];
                 sc.push_back(itSV->sc);
+
+                // evidence type info sum
+                record.se += itSV->se;
+                record.pe += itSV->pe;
+                record.ce += itSV->ce;
             }
 
             // merged record
@@ -254,6 +259,9 @@ bool SVMerge::writeVCF(void)
             itSV->info += "IN_ENDPOS=" + std::to_string(itSV->inEndPos) + ";";
             itSV->info += "OUT_BEGINPOS=" + std::to_string(itSV->outBeginPos) + ";";
             itSV->info += "OUT_ENDPOS=" + std::to_string(itSV->outEndPos) + ";";
+            itSV->info += "SE=" + std::to_string(itSV->se) + ";";
+            itSV->info += "PE=" + std::to_string(itSV->pe) + ";";
+            itSV->info += "CE=" + std::to_string(itSV->ce) + ";";
             if (itSV->targetPos != BreakpointEvidence::INVALID_POS)
             {
                 itSV->info += "TARGETPOS=" + std::to_string(itSV->targetPos)  + ";";
@@ -299,6 +307,9 @@ bool SVMerge::writeVCF(void)
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MIN_SC,Number=1,Type=Float,Description=\"Minimum score\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MAX_SC,Number=1,Type=Float,Description=\"Maximum score\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CE,Number=1,Type=Integer,Description=\"Number of split reads supporting the SV\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
     seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));

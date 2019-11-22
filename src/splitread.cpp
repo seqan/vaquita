@@ -56,7 +56,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
     if (itRead == this->recordByRead.end())
         return false;
 
-    if (itRead->second.size() > this->getOptionManager()->getMaxSplit()) // not confident (too-many segments)
+    if (itRead->second.size() > this->getOptionManager()->getMaxSplit(this->isLongRead)) // not confident (too-many segments)
         return false;
 
     // get readID
@@ -92,7 +92,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
     this->updateBreakpointByIndels( FIRST_ELEMENT(localAligns).indelList );
 
     // for each alignment
-    unsigned maxOverlapSize = this->getOptionManager()->getMaxOverlap();
+    unsigned maxOverlapSize = this->getOptionManager()->getMaxOverlap(this->isLongRead);
     for(unsigned int i=1; i < localAligns.size(); ++i)
     {
         // check indels
@@ -370,7 +370,8 @@ void SplitRead::parseReadRecord(TReadName &readName, seqan::BamAlignmentRecord &
     this->recordByRead[readName].push_back(std::move(record));
 }
 
-void SplitRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn)
+void SplitRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn, bool isLongRead)
 {
     this->fileIn = &fileIn;
+    this->isLongRead = isLongRead;
 }

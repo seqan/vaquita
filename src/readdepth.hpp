@@ -56,7 +56,7 @@ class ReadDepth : public BreakpointCandidate
     public:
         ReadDepth(CallOptionManager* o):BreakpointCandidate(o) {};
 
-        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&);
+        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&, bool isLongRead = false);
         void parseReadRecord(seqan::CharString&, seqan::BamAlignmentRecord&);
         void addUniformDepth(TTemplateID, TPosition, TPosition, unsigned);
         void calculateReadDepthStat(std::map<TTemplateID, unsigned>&, unsigned);

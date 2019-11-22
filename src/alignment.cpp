@@ -75,7 +75,7 @@ bool AlignmentManager::load()
             break;
         }
 
-        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn, this->isLongRead);
         if ( optionManager->doPairedEndAnalysis(this->isLongRead) )
             this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doClippedReadAnalysis() )

@@ -65,7 +65,9 @@ class CallOptionManager : seqan3::argument_parser
         // for split-read
         double minSplitReadSupport{1};
         int32_t maxSplit{2};
+        int32_t maxSplitLong{7};
         int32_t maxOverlap{20};
+        int32_t maxOverlapLong{1000};
 
         // for paired-end
         double minPairSupport{1.0};
@@ -121,8 +123,8 @@ class CallOptionManager : seqan3::argument_parser
 
         // for split-read
         double getMinSplitReadSupport(void) { return minSplitReadSupport; }
-        int32_t getMaxSplit(void) { return maxSplit; }
-        int32_t getMaxOverlap(void) { return maxOverlap; }
+        int32_t getMaxSplit(bool isLongRead = false) { return isLongRead ? maxSplitLong : maxSplit; }
+        int32_t getMaxOverlap(bool isLongRead = false) { return isLongRead ? maxOverlapLong : maxOverlap; }
 
         // for paired-end
         bool doPairedEndAnalysis(bool longRead = false) { return (!skipPairedEndRead && !longRead); }

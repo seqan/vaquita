@@ -43,7 +43,7 @@ void ReadDepth::parseReadRecord(seqan::CharString &id, seqan::BamAlignmentRecord
                    std::bind2nd(std::plus<TPosition>(), 1));
 }
 
-void ReadDepth::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn)
+void ReadDepth::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn, bool isLongRead)
 {
     for (unsigned i=0; i < length(header); ++i)
     {

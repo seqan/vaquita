@@ -186,7 +186,7 @@ class BreakpointCandidate
         bool isAdjacent(SequenceSegment&, SequenceSegment&);                        // checking for adjancy of 2 intervals
 
         // defined by derived functions
-        virtual void prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn) { return; }
+        virtual void prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn, bool isLongRead = false) { return; }
         virtual void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&) { return; }
         virtual void checkReadRecord(TReadName&, seqan::BamAlignmentRecord&) { return; }
         virtual bool analyze(void) { return true; }

@@ -90,7 +90,7 @@ class ClippedRead : public BreakpointCandidate
     public:
         ClippedRead(CallOptionManager* o):BreakpointCandidate(o) {};
 
-        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&);
+        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&, bool isLongRead = false);
         void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&);
         void setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION, const BreakpointEvidence::SIDE, Breakpoint&, TTemplateID&, TPosition&, TPosition&);
 

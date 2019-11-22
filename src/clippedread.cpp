@@ -40,7 +40,7 @@
 #include "misc.hpp"
 #include "clippedread.hpp"
 
-void ClippedRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn)
+void ClippedRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn, bool isLongRead)
 {
     for (unsigned i=0; i < length(header); ++i)
     {
