@@ -158,6 +158,7 @@ void CallOptionManager::printUserInput(void)
     printMessage(this->inputFileLong);
     printMessage("[General options]");
     printMessage("- referenceGenome: " + this->referenceGenome);
+    printMessage("- threadCount: " + std::to_string(this->threadCount));
     printMessage("- minMapQual: " + std::to_string(this->minMapQual));
     printMessage("- minSVSize: " + std::to_string(this->minSVSize));
     printMessage("- adjTol: " + std::to_string(this->adjTol));

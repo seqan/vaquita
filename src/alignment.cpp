@@ -65,7 +65,7 @@ bool AlignmentManager::load()
             if (this->bamHeader[i].type == seqan::BamHeaderRecordType::BAM_HEADER_FIRST)
             {
                 seqan::CharString tempStr;
-                getTagValue(tempStr, "SO", this->bamHeader[i]);
+                seqan::getTagValue(tempStr, "SO", this->bamHeader[i]);
                 if (tempStr != "coordinate")
                 {
                     printMessage("[ERROR] : BAM files must be sorted by coordinate.");
@@ -99,7 +99,7 @@ bool AlignmentManager::load()
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
 
             // discards low quality reads, secondary mappings
-            if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
+            if (seqan::hasFlagUnmapped(record) || seqan::hasFlagQCNoPass(record) || seqan::hasFlagSecondary(record))
                 continue;
 
             // calculate depth
@@ -111,13 +111,13 @@ bool AlignmentManager::load()
             checkPairedEndRead = false;
 
             // primary alignment
-            if ( hasFlagSupplementary(record) == false)
+            if ( seqan::hasFlagSupplementary(record) == false)
             {
                 seqan::BamTagsDict tagsDict(record.tags);
                 int32_t tagIdx;
 
                 // split-read
-                if (findTagKey(tagIdx, tagsDict, "SA"))
+                if (seqan::findTagKey(tagIdx, tagsDict, "SA"))
                 {
                     checkSplitRead = true;
                 }
@@ -149,7 +149,7 @@ bool AlignmentManager::load()
                     if (record.mapQ >= minMapQual)
                     {
                         // calculate insertion size
-                        if (hasFlagAllProper(record) == true)
+                        if (seqan::hasFlagAllProper(record) == true)
                         {
                             // didn't calculate the median yet
                             if (this->maxAbInsSize == std::numeric_limits<double>::max())
@@ -169,19 +169,19 @@ bool AlignmentManager::load()
                         }
 
                         // discordant pairs
-                        if (hasFlagNextUnmapped(record) == false) // both reads have to be mapped
+                        if (seqan::hasFlagNextUnmapped(record) == false) // both reads have to be mapped
                         {
                             // size abnormality
                             if (this->isAbnormalInsertion(abs(record.tLen)))
                                 checkPairedEndRead = true;
                             else if (checkPairedEndRead == false) // orientation abnormality
                             {
-                                if (hasFlagRC(record) == hasFlagNextRC(record)) // inversion
+                                if (seqan::hasFlagRC(record) == seqan::hasFlagNextRC(record)) // inversion
                                 {
                                     checkPairedEndRead = true;
                                 }
-                                else if ( (record.tLen > 0 && hasFlagRC(record)) || \
-                                          (record.tLen < 0 && hasFlagRC(record) == false) )
+                                else if ( (record.tLen > 0 && seqan::hasFlagRC(record)) || \
+                                          (record.tLen < 0 && seqan::hasFlagRC(record) == false) )
                                     checkPairedEndRead = true; // swapped (<-- -->)
                             }
                         }
@@ -279,7 +279,7 @@ void AlignmentManager::calcInsertSize(void)
 
 void AlignmentManager::printRecord(seqan::BamAlignmentRecord & record)
 {
-    writeRecord(*this->pBamFileOut, record);
+    seqan::writeRecord(*this->pBamFileOut, record);
 }
 
 seqan::CharString AlignmentManager::getRefName(int32_t id)
@@ -308,7 +308,7 @@ void AlignmentManager::getSequenceAndDepth(seqan::CharString& seq, std::vector<i
 
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
@@ -328,7 +328,7 @@ void AlignmentManager::getSequenceAndDepth(seqan::CharString& seq, std::vector<i
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
           continue;
 
@@ -349,7 +349,7 @@ void AlignmentManager::getSequenceAndDepth(seqan::CharString& seq, std::vector<i
         /*
         seqan::BamTagsDict tagsDict(record.tags);
         int32_t editDistance, tagIdx;
-        if ( findTagKey(tagIdx, tagsDict, "NM") )
+        if ( seqan::findTagKey(tagIdx, tagsDict, "NM") )
         {
             extractTagValue(editDistance, tagsDict, tagIdx);
             if (editDistance > clippedReadEditDistance)
@@ -357,7 +357,7 @@ void AlignmentManager::getSequenceAndDepth(seqan::CharString& seq, std::vector<i
         }
         */
 
-        // if (hasFlagRC(record)) // wrong
+        // if (seqan::hasFlagRC(record)) // wrong
         //     seqan::reverseComplement(record.seq);
 
         // calc. seq
@@ -411,7 +411,7 @@ void AlignmentManager::getSequence(seqan::CharString& seq, TTemplateID rID, TPos
 
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
@@ -431,7 +431,7 @@ void AlignmentManager::getSequence(seqan::CharString& seq, TTemplateID rID, TPos
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
           continue;
 
@@ -496,7 +496,7 @@ void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TP
 
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
@@ -515,7 +515,7 @@ void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TP
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
             continue;
 

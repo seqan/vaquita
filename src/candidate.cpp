@@ -42,7 +42,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, se
     // reference position 0-based, [begin, end)
     alnInfo.refSegment.templateID = record.rID;
     alnInfo.refSegment.beginPos = record.beginPos;
-    alnInfo.refSegment.isReverse = hasFlagRC(record);
+    alnInfo.refSegment.isReverse = seqan::hasFlagRC(record);
     alnInfo.querySegment.templateID = record._qID; // TODO : SeqAn seems not working properly here. (qID)
     alnInfo.querySegment.isReverse = alnInfo.refSegment.isReverse;
 
@@ -77,7 +77,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, se
                 {
                     if (record.cigar[i].count >= minClippedSeqSize)
                     {
-                        be.leftSegment.isReverse = hasFlagRC(record);
+                        be.leftSegment.isReverse = seqan::hasFlagRC(record);
                         be.rightSegment.isReverse = be.leftSegment.isReverse;
                         be.suppRead = 1;
 
@@ -150,7 +150,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, se
                     be.leftSegment.templateID = record.rID;
                     be.leftSegment.beginPos = delRefBeginPos;
                     be.leftSegment.endPos = be.leftSegment.beginPos + 1;
-                    be.leftSegment.isReverse = hasFlagRC(record);
+                    be.leftSegment.isReverse = seqan::hasFlagRC(record);
 
                     be.rightSegment.templateID = record.rID;
                     be.rightSegment.beginPos = refEndPos;

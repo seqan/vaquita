@@ -38,7 +38,7 @@
 void ReadDepth::parseReadRecord(seqan::CharString &id, seqan::BamAlignmentRecord &record)
 {
     std::transform(readDepthInfo[record.rID].begin() + record.beginPos, \
-                   readDepthInfo[record.rID].begin() + record.beginPos + getAlignmentLengthInRef(record),
+                   readDepthInfo[record.rID].begin() + record.beginPos + seqan::getAlignmentLengthInRef(record),
                    readDepthInfo[record.rID].begin() + record.beginPos,
                    std::bind2nd(std::plus<TPosition>(), 1));
 }
@@ -50,8 +50,8 @@ void ReadDepth::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileI
         if (header[i].type == seqan::BamHeaderRecordType::BAM_HEADER_REFERENCE)
         {
             seqan::CharString templateName, templateLengthStr;
-            getTagValue(templateName, "SN", header[i]);
-            getTagValue(templateLengthStr, "LN", header[i]);
+            seqan::getTagValue(templateName, "SN", header[i]);
+            seqan::getTagValue(templateLengthStr, "LN", header[i]);
             seqan::toCString(templateLengthStr);
 
             TTemplateID rID = BreakpointEvidence::NOVEL_TEMPLATE;

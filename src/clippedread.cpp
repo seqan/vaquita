@@ -47,8 +47,8 @@ void ClippedRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFil
         if (header[i].type == seqan::BamHeaderRecordType::BAM_HEADER_REFERENCE)
         {
             seqan::CharString templateName, templateLengthStr;
-            getTagValue(templateName, "SN", header[i]);
-            getTagValue(templateLengthStr, "LN", header[i]);
+            seqan::getTagValue(templateName, "SN", header[i]);
+            seqan::getTagValue(templateLengthStr, "LN", header[i]);
             seqan::toCString(templateLengthStr);
 
             TTemplateID rID = BreakpointEvidence::NOVEL_TEMPLATE;

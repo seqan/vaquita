@@ -317,12 +317,12 @@ void SplitRead::checkReadRecord(TReadName &readName, seqan::BamAlignmentRecord &
 {
     TReadName nextPairName = readName;
 
-    if ( hasFlagFirst(record) )
+    if ( seqan::hasFlagFirst(record) )
     {
         readName += "/1";
         nextPairName += "/2";
     }
-    else // ( hasFlagLast(record) )
+    else // ( seqan::hasFlagLast(record) )
     {
         readName += "/2";
         nextPairName += "/1";
