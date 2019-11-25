@@ -73,6 +73,7 @@ void CallOptionManager::init_options()
     (*this).add_option(minMapQual, 'q', "minMapQual", "Mapping quaility cutoff.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(minSVSize, 'm', "minSVSize", "Structural varation size cutoff.", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_option(adjTol, 'a', "adjTol", "Positional adjacency in nucleotide resolution.", seqan3::option_spec::DEFAULT, int_val);
+    (*this).add_option(threadCount, 'k', "threadCount", "How many threads to use for parallel computation", seqan3::option_spec::DEFAULT, int_val);
     (*this).add_flag(reportFilteredResult, '\0', "report-filtered", "Report filtered result");
     (*this).add_flag(skipPairedEndRead, '\0', "no-pe", "Do not use read-pair evidence.");
     (*this).add_flag(skipClippedRead, '\0', "no-ce", "Do not use soft-clipped evidence.");

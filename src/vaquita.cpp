@@ -147,7 +147,12 @@ int callMain(int argc, char const ** argv)
 
     if (doShortReads && doLongReads)
     {
-        sviper::CmdOptions options(oMgr.getInputFile(true), oMgr.getInputFile(), oMgr.getOutputFile(), oMgr.getReferenceGenome());
+        sviper::CmdOptions options(oMgr.getThreadCount(),
+                                   oMgr.getInputFile(true),
+                                   oMgr.getInputFile(),
+                                   oMgr.getOutputFile(),
+                                   oMgr.getReferenceGenome(),
+                                   oMgr.getOutputFile() + "_polished");
         sviper::input_output_information info{options};
 
         // Check files
