@@ -79,6 +79,7 @@ void CallOptionManager::init_options()
     (*this).add_flag(skipClippedRead, '\0', "no-ce", "Do not use soft-clipped evidence.");
     (*this).add_flag(skipReadDepth, '\0', "no-re", "Do not use read-depth evidence.");
     (*this).add_flag(skipRankAggregation, '\0', "no-rank-aggregation", "Do not use rank-aggregation for prioritization.");
+    (*this).add_flag(skipPolishing, '\0', "no-polishing", "Do not polish the variants based on SViper. [Only relevant when short and long reads are both provided.]");
     (*this).add_flag(writeBreakpoint, 'w', "write-breakpoint", "Write breakpoint informtation in a tab-separated format (breakpoints.tsv).");
 
     (*this).add_section("Split-read evidence");
@@ -156,6 +157,8 @@ void CallOptionManager::printUserInput(void)
     printMessage(this->inputFile);
     printMessage("[Long Read Input File]");
     printMessage(this->inputFileLong);
+    printMessage("[Output File]");
+    printMessage(this->outputFile);
     printMessage("[General options]");
     printMessage("- referenceGenome: " + this->referenceGenome);
     printMessage("- threadCount: " + std::to_string(this->threadCount));
@@ -169,9 +172,18 @@ void CallOptionManager::printUserInput(void)
     printMessage("- no-ce: " + getBooleanString(this->skipClippedRead));
     printMessage("- no-re: " + getBooleanString(this->skipReadDepth));
     printMessage("- no-rank-aggregation: " + getBooleanString(this->skipRankAggregation));
+    printMessage("- no-polishing: " + getBooleanString(this->skipPolishing));
     printMessage("[Split-read options]");
-    printMessage("- maxSplit: " + std::to_string(this->maxSplit));
-    printMessage("- maxOverlap: " + std::to_string(this->maxOverlap));
+    if (!getInputFile().empty())
+    {
+        printMessage("- maxSplit: " + std::to_string(this->maxSplit));
+        printMessage("- maxOverlap: " + std::to_string(this->maxOverlap));
+    }
+    if (!getInputFile(true).empty())
+    {
+        printMessage("- maxSplitLong: " + std::to_string(this->maxSplitLong));
+        printMessage("- maxOverlapLong: " + std::to_string(this->maxOverlapLong));
+    }
     printMessage("- minSplitReadSupport: " + std::to_string(this->minSplitReadSupport));
     printMessage("[Read-pair options]");
     printMessage("- abInsParam: " + std::to_string(this->abInsParam));

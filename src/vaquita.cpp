@@ -145,7 +145,7 @@ int callMain(int argc, char const ** argv)
     // SV ordering
     RUN(result,"SV PRIORITIZATION", svMgr.orderSV());
 
-    if (doShortReads && doLongReads)
+    if (doShortReads && doLongReads && oMgr.getPolishing())
     {
         sviper::CmdOptions options(oMgr.getThreadCount(),
                                    oMgr.getInputFile(true),

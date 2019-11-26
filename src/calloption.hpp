@@ -61,6 +61,7 @@ class CallOptionManager : seqan3::argument_parser
         bool writeBreakpoint{false};
         bool reportFilteredResult{false};
         bool skipRankAggregation{false};
+        bool skipPolishing{false};
 
         // for split-read
         double minSplitReadSupport{1};
@@ -121,6 +122,7 @@ class CallOptionManager : seqan3::argument_parser
         bool getReportFilteredResult(void) { return reportFilteredResult; }
         bool getUseRankAggregation(void) { return !skipRankAggregation; }
         void setMinVote(int v) { this->minVote = v;}
+        bool getPolishing(void) {return !skipPolishing; }
 
         // for split-read
         double getMinSplitReadSupport(void) { return minSplitReadSupport; }
