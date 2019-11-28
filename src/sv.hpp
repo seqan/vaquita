@@ -124,7 +124,7 @@ class VcfRecordEnhanced : public seqan::VcfRecord
 
         void update(sviper::Variant const & tmp)
         {
-            this->status = (tmp.filter == "PASS" || tmp.filter == "SKIP") ? STATUS::PASS : STATUS::FILTERED;
+            this->status = (tmp.filter == "FAIL5") ? STATUS::FILTERED : STATUS::PASS;
             this->filter = seqan::CharString{tmp.filter};
             this->beginPos = tmp.ref_pos;
             this->endPos = tmp.ref_pos_end;
