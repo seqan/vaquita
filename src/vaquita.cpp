@@ -147,12 +147,17 @@ int callMain(int argc, char const ** argv)
 
     if (doShortReads && doLongReads && oMgr.getPolishing())
     {
+        // Pass necessary info to SViper command struct.
+        int avg_read_depth = static_cast<int>(std::round(finalBpMgr.getReadDepth()->getMedianDepth()));
         sviper::CmdOptions options(oMgr.getThreadCount(),
                                    oMgr.getInputFile(true),
                                    oMgr.getInputFile(),
                                    oMgr.getOutputFile(),
                                    oMgr.getReferenceGenome(),
                                    oMgr.getOutputFile() + "_polished");
+        options.mean_coverage_of_short_reads = avg_read_depth;
+        options.mean_insert_size_of_short_reads = alnMgr.getInsMedian();
+        options.stdev_insert_size_of_short_reads = alnMgr.getInsSD();
         sviper::input_output_information info{options};
 
         // Check files
