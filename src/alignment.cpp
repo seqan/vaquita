@@ -80,8 +80,8 @@ bool AlignmentManager::load()
             this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doClippedReadAnalysis() )
             this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doReadDepthAnalysis(this->isLongRead) )
-            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
+        if ( optionManager->doReadDepthAnalysis() )
+            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn, this->isLongRead);
 
         seqan::CharString qNameWithPairInfo;
         seqan::BamAlignmentRecord record;

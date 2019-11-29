@@ -159,6 +159,7 @@ int callMain(int argc, char const ** argv)
         options.mean_insert_size_of_short_reads = alnMgr.getInsMedian();
         options.stdev_insert_size_of_short_reads = alnMgr.getInsSD();
         sviper::input_output_information info{options};
+        int lr_depth = static_cast<int>(std::round(bpMgrLR.getReadDepth()->getMedianDepth()));
 
         // Check files
         if (!sviper::open_file_success(info.long_read_bai, (info.cmd_options.long_read_file_name + ".bai").c_str()) ||
@@ -186,7 +187,7 @@ int callMain(int argc, char const ** argv)
                 sviper::Variant tmp{deletions_sviper[vidx]};
                 tmp.ref_chrom = std::string{seqan::toCString(alnMgr.getRefName(std::stoi(tmp.ref_chrom)))};
                 sviper::polish_variant(tmp, info);
-                deletions_sviper[vidx].update(tmp);
+                deletions_sviper[vidx].update(tmp, lr_depth);
             }
         } // parallel for loop
         endTimeMessage("SViper: POLISHING VARIANTS");

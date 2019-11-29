@@ -122,9 +122,9 @@ class VcfRecordEnhanced : public seqan::VcfRecord
             return tmp;
         }
 
-        void update(sviper::Variant const & tmp)
+        void update(sviper::Variant const & tmp, int lr_depth)
         {
-            if (this->se + this->ce + this->pe < 8)
+            if (lr_depth >= 15 || (this->se + this->ce + this->pe < 8))
             {
                 this->status = (tmp.filter == "FAIL1" || tmp.filter == "FAIL2" || tmp.filter == "FAIL5") ? STATUS::FILTERED : STATUS::PASS;
                 this->filter = (tmp.filter == "FAIL1" || tmp.filter == "FAIL2" || tmp.filter == "FAIL5") ? tmp.filter : STATUS_PASS();
