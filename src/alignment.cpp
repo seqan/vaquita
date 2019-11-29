@@ -81,7 +81,7 @@ bool AlignmentManager::load()
         if ( optionManager->doClippedReadAnalysis() )
             this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doReadDepthAnalysis() )
-            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn, this->isLongRead);
+            this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
 
         seqan::CharString qNameWithPairInfo;
         seqan::BamAlignmentRecord record;
@@ -103,7 +103,7 @@ bool AlignmentManager::load()
                 continue;
 
             // calculate depth
-            if ( optionManager->doReadDepthAnalysis(this->isLongRead) )
+            if ( optionManager->doReadDepthAnalysis() )
                 this->readDepth->parseReadRecord(record.qName, record);
 
             checkClippedSequence = false;

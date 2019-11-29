@@ -62,6 +62,7 @@ class ReadDepth : public BreakpointCandidate
         void calculateReadDepthStat(std::map<TTemplateID, unsigned>&, unsigned);
         void setMedianDepth(double d) { this->medianReadDepth = d; }
 
+        void longReadDepthCalc();
         double getDepthTH(void) { return this->depthTH; }
         double getPoissonP(unsigned k, double l);
     	double getKLScore(double a, double b);

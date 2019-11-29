@@ -63,37 +63,37 @@ void ReadDepth::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileI
             std::fill(readDepthInfo[rID].begin(), readDepthInfo[rID].end(), 0);
         }
     }
-    if (isLongRead)
-    {
-        std::vector<double> backgroundDepth{};
-        this->setRandomSeed(0);
-        for (unsigned i = 0; i < this->getOptionManager()->getSamplingNum(); i++)
-        {
-            TPosition p;
-            TTemplateID t;
-            double kl = 0.0, depth = 0.0;
-            double leftDepthAvg, rightDepthAvg;
-
-            // get kl and depth at random position
-            while (depth <= 0.0)
-            {
-                this->getRandomPos(t, p);
-                getAvgReadDepth(leftDepthAvg, rightDepthAvg, t, p, this->getOptionManager()->getReadDepthWindowSize(),
-                                this->getOptionManager()->getReadDepthWindowSize(), BreakpointEvidence::SIDE::LEFT);
-
-                depth = leftDepthAvg + rightDepthAvg / 2.0;
-            }
-            backgroundDepth.push_back(depth);
-        }
-
-        std::sort(backgroundDepth.begin(), backgroundDepth.end(), [](auto &left, auto &right) {return left < right;} );
-        double medianDepth = MID_ELEMENT(backgroundDepth);
-        this->setMedianDepth( medianDepth );
-
-        printMessage("Depth median for long reads: " + std::to_string(medianDepth));
-    }
 }
 
+void ReadDepth::longReadDepthCalc()
+{
+    std::vector<double> backgroundDepth{};
+    this->setRandomSeed(0);
+    for (unsigned i = 0; i < this->getOptionManager()->getSamplingNum(); i++)
+    {
+        TPosition p;
+        TTemplateID t;
+        double kl = 0.0, depth = 0.0;
+        double leftDepthAvg, rightDepthAvg;
+
+        // get kl and depth at random position
+        while (depth <= 0.0)
+        {
+            this->getRandomPos(t, p);
+            getAvgReadDepth(leftDepthAvg, rightDepthAvg, t, p, this->getOptionManager()->getReadDepthWindowSize(),
+                            this->getOptionManager()->getReadDepthWindowSize(), BreakpointEvidence::SIDE::LEFT);
+
+            depth = leftDepthAvg + rightDepthAvg / 2.0;
+        }
+        backgroundDepth.push_back(depth);
+    }
+
+    std::sort(backgroundDepth.begin(), backgroundDepth.end(), [](auto &left, auto &right) {return left < right;} );
+    double medianDepth = MID_ELEMENT(backgroundDepth);
+    this->setMedianDepth( medianDepth );
+
+    printMessage("Depth median for long reads: " + std::to_string(medianDepth));
+}
 void ReadDepth::setRandomSeed(int seed)
 {
     srand(seed);

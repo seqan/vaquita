@@ -159,6 +159,7 @@ int callMain(int argc, char const ** argv)
         options.mean_insert_size_of_short_reads = alnMgr.getInsMedian();
         options.stdev_insert_size_of_short_reads = alnMgr.getInsSD();
         sviper::input_output_information info{options};
+        bpMgrLR.getReadDepth()->longReadDepthCalc();
         int lr_depth = static_cast<int>(std::round(bpMgrLR.getReadDepth()->getMedianDepth()));
 
         // Check files
