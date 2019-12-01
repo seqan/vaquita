@@ -74,7 +74,7 @@ int callMain(int argc, char const ** argv)
 
     // Loading & extraction
     RUN_IF(doShortReads, result, "SHORT READ EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
-    printTimeMessage("Estimated short read length is " + std::to_string(oMgr.getShortReadLength()));
+    if (doShortReads) printTimeMessage("Estimated short read length is " + std::to_string(oMgr.getShortReadLength()));
     if (!result && !doLongReads) return 3;
     RUN_IF(doLongReads, result, "LONG READ EVIDENCE EXTRACTION", alnMgrLR.load());
     if (!result) return 3;
@@ -159,7 +159,7 @@ int callMain(int argc, char const ** argv)
         options.mean_coverage_of_short_reads = avg_read_depth;
         options.mean_insert_size_of_short_reads = alnMgr.getInsMedian();
         options.stdev_insert_size_of_short_reads = alnMgr.getInsSD();
-        options.length_of_short_reads = static_cast<int>(oMgr.getShortReadLength());
+        options.length_of_short_reads = oMgr.getShortReadLength();
         sviper::input_output_information info{options};
         bpMgrLR.getReadDepth()->longReadDepthCalc();
         int lr_depth = static_cast<int>(std::round(bpMgrLR.getReadDepth()->getMedianDepth()));
@@ -170,6 +170,7 @@ int callMain(int argc, char const ** argv)
             !sviper::open_file_success(info.log_file, (info.cmd_options.output_prefix + ".log").c_str()))
             return 1;
 
+        sviper::print_log_header(options, info.log_file);
         // Prepare file hangles for parallel computing
         // -------------------------------------------------------------------------
         RUN(result, "SViper: PREP PARALLEL PROCESSING", sviper::prep_file_handles(info));

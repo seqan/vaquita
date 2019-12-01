@@ -221,8 +221,8 @@ bool AlignmentManager::load()
                 ++splitReadCount;
             }
         }
-
-        optionManager->setShortReadLength(running_sum / 1000000);
+        if (!this->isLongRead)
+            optionManager->setShortReadLength(static_cast<int>(std::round(running_sum / 1000000)));
 
         // dataset contains small number of reads
         if (this->maxAbInsSize < 0 && this->readsForMedInsEst.size() != 0)
