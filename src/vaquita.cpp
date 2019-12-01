@@ -74,6 +74,7 @@ int callMain(int argc, char const ** argv)
 
     // Loading & extraction
     RUN_IF(doShortReads, result, "SHORT READ EVIDENCE EXTRACTION", alnMgr.load()); // TODO: segmentation fault if fails (need fix)
+    printTimeMessage("Estimated short read length is " + std::to_string(oMgr.getShortReadLength()));
     if (!result && !doLongReads) return 3;
     RUN_IF(doLongReads, result, "LONG READ EVIDENCE EXTRACTION", alnMgrLR.load());
     if (!result) return 3;
@@ -158,6 +159,7 @@ int callMain(int argc, char const ** argv)
         options.mean_coverage_of_short_reads = avg_read_depth;
         options.mean_insert_size_of_short_reads = alnMgr.getInsMedian();
         options.stdev_insert_size_of_short_reads = alnMgr.getInsSD();
+        options.length_of_short_reads = static_cast<int>(oMgr.getShortReadLength());
         sviper::input_output_information info{options};
         bpMgrLR.getReadDepth()->longReadDepthCalc();
         int lr_depth = static_cast<int>(std::round(bpMgrLR.getReadDepth()->getMedianDepth()));

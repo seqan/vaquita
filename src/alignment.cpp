@@ -89,12 +89,16 @@ bool AlignmentManager::load()
         int32_t minSVSize = optionManager->getMinSVSize();
         int32_t minClipSeqSize = optionManager->getMinClippedSeqSize();
         bool checkClippedSequence, checkSplitRead, checkPairedEndRead;
+        uint32_t running_sum{0};
 
         while (!atEnd(this->bamFileIn))
         {
             seqan::readRecord(record, this->bamFileIn);
             ++this->totalRecordNum;
 
+            // calculate short read length from first 1,000,000 sequences.
+            if (this->totalRecordNum < 1000000 && !this->isLongRead)
+                running_sum += seqan::getAlignmentLengthInRef(record);
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
 
@@ -217,6 +221,8 @@ bool AlignmentManager::load()
                 ++splitReadCount;
             }
         }
+
+        optionManager->setShortReadLength(running_sum / 1000000);
 
         // dataset contains small number of reads
         if (this->maxAbInsSize < 0 && this->readsForMedInsEst.size() != 0)

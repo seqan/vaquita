@@ -57,7 +57,8 @@ class CallOptionManager : seqan3::argument_parser
         int32_t minVote{-1};
         int32_t priMethod;
         int32_t filterMethod;
-        unsigned threadCount{std::thread::hardware_concurrency()};
+        uint32_t threadCount{std::thread::hardware_concurrency()};
+        unsigned shortReadLength{0};
         bool writeBreakpoint{false};
         bool reportFilteredResult{false};
         bool skipRankAggregation{false};
@@ -123,6 +124,8 @@ class CallOptionManager : seqan3::argument_parser
         bool getUseRankAggregation(void) { return !skipRankAggregation; }
         void setMinVote(int v) { this->minVote = v;}
         bool getPolishing(void) {return !skipPolishing; }
+        void setShortReadLength(uint32_t average) { this->shortReadLength = average; }
+        uint32_t getShortReadLength() { return this->shortReadLength; }
 
         // for split-read
         double getMinSplitReadSupport(void) { return minSplitReadSupport; }
