@@ -39,14 +39,14 @@
 bool SVMerge::loadVcf(std::string& fileName)
 {
     printTimeMessage("Loading: " + fileName);
-    
+
     SVManager newSV(fileName, optionManager->getUseAll());
     printTimeMessage(std::to_string(newSV.getDeletionCount()) + " deletions.");
     printTimeMessage(std::to_string(newSV.getInversionCount()) + " inversions.");
     printTimeMessage(std::to_string(newSV.getDuplicationCount()) + " duplications.");
     printTimeMessage(std::to_string(newSV.getTranslocationCount()) + " translocations.");
     this->svSet.push_back(newSV);
-    
+
     return true;
 }
 
@@ -169,6 +169,11 @@ bool SVMerge::merge(void)
                 record.dp[itSV->additionalInfo] += (unsigned) itSV->rd;
                 ++record.recordNum[itSV->additionalInfo];
                 sc.push_back(itSV->sc);
+
+                // evidence type info sum
+                record.se += itSV->se;
+                record.pe += itSV->pe;
+                record.ce += itSV->ce;
             }
 
             // merged record
@@ -239,7 +244,7 @@ bool SVMerge::writeVCF(void)
     // merge to a single list
     std::vector<VcfRecordEnhanced> vcfRecords;
     for (auto itSVType = this->mergedSV.begin(); itSVType != this->mergedSV.end(); ++itSVType)
-    {    
+    {
         std::sort(itSVType->second.begin(), itSVType->second.end(), less_than_vcf());
         int32_t nID = 1;
         for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
@@ -254,6 +259,9 @@ bool SVMerge::writeVCF(void)
             itSV->info += "IN_ENDPOS=" + std::to_string(itSV->inEndPos) + ";";
             itSV->info += "OUT_BEGINPOS=" + std::to_string(itSV->outBeginPos) + ";";
             itSV->info += "OUT_ENDPOS=" + std::to_string(itSV->outEndPos) + ";";
+            itSV->info += "SE=" + std::to_string(itSV->se) + ";";
+            itSV->info += "PE=" + std::to_string(itSV->pe) + ";";
+            itSV->info += "CE=" + std::to_string(itSV->ce) + ";";
             if (itSV->targetPos != BreakpointEvidence::INVALID_POS)
             {
                 itSV->info += "TARGETPOS=" + std::to_string(itSV->targetPos)  + ";";
@@ -272,12 +280,12 @@ bool SVMerge::writeVCF(void)
 
             itSV->ref = "N"; // before SV
             itSV->format = "GT:DP";
-            itSV->qual = VcfRecord::MISSING_QUAL();
+            itSV->qual = seqan::VcfRecord::MISSING_QUAL();
             itSV->filter = VcfRecordEnhanced::STATUS_PASS();
 
             // genotype info
             for (unsigned datasetID = 0; datasetID < this->svSet.size(); ++datasetID)
-                appendValue(itSV->genotypeInfos, itSV->gt[datasetID] + ":" +  std::to_string(itSV->dp[datasetID]));
+                seqan::appendValue(itSV->genotypeInfos, itSV->gt[datasetID] + ":" +  std::to_string(itSV->dp[datasetID]));
 
             // add
             vcfRecords.push_back(*itSV);
@@ -287,37 +295,40 @@ bool SVMerge::writeVCF(void)
     std::sort(vcfRecords.begin(), vcfRecords.end(), less_than_vcf());
 
     // init.
-    VcfHeader vcfHeader;
-    VcfFileOut vcfOut;
-    open(vcfOut, std::cout, Vcf());
+    seqan::VcfHeader vcfHeader;
+    seqan::VcfFileOut vcfOut;
+    open(vcfOut, std::cout, seqan::Vcf());
 
     // headers
-    appendValue(vcfHeader, VcfHeaderRecord("fileformat", "VCFv4.1"));
-    appendValue(vcfHeader, VcfHeaderRecord("source", APP_NAME));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MIN_SC,Number=1,Type=Float,Description=\"Minimum score\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MAX_SC,Number=1,Type=Float,Description=\"Maximum score\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP:TANDEM,Description=\"Tandem duplication\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=TRA,Description=\"Translocation\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=BND,Description=\"Breakend\">"));
-    appendValue(vcfHeader, seqan::VcfHeaderRecord("FORMAT", "<ID=GT,Number=1,Type=String,Description=\"Genotype\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("fileformat", "VCFv4.1"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("source", APP_NAME));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MIN_SC,Number=1,Type=Float,Description=\"Minimum score\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=MAX_SC,Number=1,Type=Float,Description=\"Maximum score\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=PE,Number=1,Type=Integer,Description=\"Number of read-pairs supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=CE,Number=1,Type=Integer,Description=\"Number of split reads supporting the SV\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DEL,Description=\"Deletion\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=INV,Description=\"Inversion\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP,Description=\"Duplication\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=DUP:TANDEM,Description=\"Tandem duplication\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=TRA,Description=\"Translocation\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("ALT", "<ID=BND,Description=\"Breakend\">"));
+    seqan::appendValue(vcfHeader, seqan::VcfHeaderRecord("FORMAT", "<ID=GT,Number=1,Type=String,Description=\"Genotype\">"));
 
     // reference & sample
     for (auto it = this->refNames.begin(); it != this->refNames.end(); ++it)
-        appendValue(contigNames(context(vcfOut)), *it);
+        seqan::appendValue(seqan::contigNames(seqan::context(vcfOut)), *it);
 
     for(auto it = this->fileNames.begin(); it != this->fileNames.end(); ++it)
-        appendValue(sampleNames(context(vcfOut)), *it);
+        seqan::appendValue(seqan::sampleNames(seqan::context(vcfOut)), *it);
 
     // write
-    writeHeader(vcfOut, vcfHeader);
+    seqan::writeHeader(vcfOut, vcfHeader);
     for (auto itSV = vcfRecords.begin(); itSV != vcfRecords.end(); ++itSV)
-        writeRecord(vcfOut, *itSV);
+        seqan::writeRecord(vcfOut, *itSV);
 
     return true;
 }

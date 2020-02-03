@@ -34,38 +34,38 @@
 #include "alignment.hpp"
 #include "misc.hpp"
 
-bool AlignmentManager::load(void)
+bool AlignmentManager::load()
 {
     if( optionManager == NULL )
         return false;
 
-    if ( !open(this->bamFileIn, toCString(optionManager->getInputFile())) )
+    if ( !open(this->bamFileIn, seqan::toCString(optionManager->getInputFile(this->isLongRead))) )
     {
-        std::cerr << "ERROR: Could not open " << optionManager->getInputFile() << std::endl;
+        std::cerr << "ERROR: Could not open " << optionManager->getInputFile(this->isLongRead) << std::endl;
         return false;
     }
 
-    CharString baiFileName = optionManager->getInputFile();
+    seqan::CharString baiFileName = optionManager->getInputFile(this->isLongRead);
     baiFileName += ".bai";
-    if (!open(this->baiIndex, toCString(baiFileName)))
+    if (!open(this->baiIndex, seqan::toCString(baiFileName)))
     {
         std::cerr << "ERROR: Could not read BAI index file " << baiFileName << "\n";
         return false;
     }
-    this->pBamFileOut = new BamFileOut(context(this->bamFileIn), std::cerr, Sam());
+    this->pBamFileOut = new seqan::BamFileOut(seqan::context(this->bamFileIn), std::cerr, seqan::Sam());
 
     this->totalRecordNum = 0;
     try
     {
-        readHeader(this->bamHeader, this->bamFileIn);
+        seqan::readHeader(this->bamHeader, this->bamFileIn);
 
         // read headers
         for (unsigned i=0; i < length(this->bamHeader); ++i)
         {
-            if (this->bamHeader[i].type == BamHeaderRecordType::BAM_HEADER_FIRST)
+            if (this->bamHeader[i].type == seqan::BamHeaderRecordType::BAM_HEADER_FIRST)
             {
-                CharString tempStr;
-                getTagValue(tempStr, "SO", this->bamHeader[i]);
+                seqan::CharString tempStr;
+                seqan::getTagValue(tempStr, "SO", this->bamHeader[i]);
                 if (tempStr != "coordinate")
                 {
                     printMessage("[ERROR] : BAM files must be sorted by coordinate.");
@@ -75,31 +75,35 @@ bool AlignmentManager::load(void)
             break;
         }
 
-        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
-        if ( optionManager->doPairedEndAnalysis() )
+        this->splitRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn, this->isLongRead);
+        if ( optionManager->doPairedEndAnalysis(this->isLongRead) )
             this->pairedEndRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doClippedReadAnalysis() )
             this->clippedRead->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
         if ( optionManager->doReadDepthAnalysis() )
             this->readDepth->prepAfterHeaderParsing(this->bamHeader, this->bamFileIn);
 
-        BamAlignmentRecord record;
-        CharString qNameWithPairInfo;
+        seqan::CharString qNameWithPairInfo;
+        seqan::BamAlignmentRecord record;
         int32_t minMapQual = optionManager->getMinMapQual();
         int32_t minSVSize = optionManager->getMinSVSize();
         int32_t minClipSeqSize = optionManager->getMinClippedSeqSize();
-        bool checkClippedSequence, checkSplitRead, checkPairedEndRead;        
-        
+        bool checkClippedSequence, checkSplitRead, checkPairedEndRead;
+        uint32_t running_sum{0};
+
         while (!atEnd(this->bamFileIn))
         {
-            readRecord(record, this->bamFileIn);
+            seqan::readRecord(record, this->bamFileIn);
             ++this->totalRecordNum;
 
+            // calculate short read length from first 1,000,000 sequences.
+            if (this->totalRecordNum < 1000000 && !this->isLongRead)
+                running_sum += seqan::getAlignmentLengthInRef(record);
             if (this->totalRecordNum % AlignmentManager::PRINT_READ_NUMBER_PER == 0)
                 printTimeMessage(std::to_string(this->totalRecordNum) + " records were parsed.");
 
             // discards low quality reads, secondary mappings
-            if (hasFlagUnmapped(record) || hasFlagQCNoPass(record) || hasFlagSecondary(record))
+            if (seqan::hasFlagUnmapped(record) || seqan::hasFlagQCNoPass(record) || seqan::hasFlagSecondary(record))
                 continue;
 
             // calculate depth
@@ -111,20 +115,20 @@ bool AlignmentManager::load(void)
             checkPairedEndRead = false;
 
             // primary alignment
-            if ( hasFlagSupplementary(record) == false)
+            if ( seqan::hasFlagSupplementary(record) == false)
             {
-                BamTagsDict tagsDict(record.tags);
+                seqan::BamTagsDict tagsDict(record.tags);
                 int32_t tagIdx;
 
                 // split-read
-                if (findTagKey(tagIdx, tagsDict, "SA"))
+                if (seqan::findTagKey(tagIdx, tagsDict, "SA"))
                 {
                     checkSplitRead = true;
                 }
                 else
                 {
                     // clipped-reads, filtering by sequence size
-                    int lastCigar = length(record.cigar) - 1;               
+                    int lastCigar = length(record.cigar) - 1;
                     if ( ((record.cigar[0].operation == 'H'  || record.cigar[0].operation == 'S') && \
                            record.cigar[0].count >= minClipSeqSize) || \
                          ((record.cigar[lastCigar].operation == 'H' || record.cigar[lastCigar].operation == 'S') && \
@@ -149,11 +153,11 @@ bool AlignmentManager::load(void)
                     if (record.mapQ >= minMapQual)
                     {
                         // calculate insertion size
-                        if (hasFlagAllProper(record) == true) 
+                        if (seqan::hasFlagAllProper(record) == true)
                         {
                             // didn't calculate the median yet
-                            if (this->maxAbInsSize == std::numeric_limits<double>::max()) 
-                            {                            
+                            if (this->maxAbInsSize == std::numeric_limits<double>::max())
+                            {
                                 // save the insertion length for median calculation
                                 this->readsForMedInsEst.push_back(std::make_pair(abs(record.tLen), record));
 
@@ -169,20 +173,20 @@ bool AlignmentManager::load(void)
                         }
 
                         // discordant pairs
-                        if (hasFlagNextUnmapped(record) == false) // both reads have to be mapped
+                        if (seqan::hasFlagNextUnmapped(record) == false) // both reads have to be mapped
                         {
                             // size abnormality
                             if (this->isAbnormalInsertion(abs(record.tLen)))
                                 checkPairedEndRead = true;
                             else if (checkPairedEndRead == false) // orientation abnormality
                             {
-                                if (hasFlagRC(record) == hasFlagNextRC(record)) // inversion
+                                if (seqan::hasFlagRC(record) == seqan::hasFlagNextRC(record)) // inversion
                                 {
                                     checkPairedEndRead = true;
                                 }
-                                else if ( (record.tLen > 0 && hasFlagRC(record)) || \
-                                          (record.tLen < 0 && hasFlagRC(record) == false) )
-                                    checkPairedEndRead = true; // swapped (<-- -->)                                
+                                else if ( (record.tLen > 0 && seqan::hasFlagRC(record)) || \
+                                          (record.tLen < 0 && seqan::hasFlagRC(record) == false) )
+                                    checkPairedEndRead = true; // swapped (<-- -->)
                             }
                         }
                     }
@@ -197,7 +201,7 @@ bool AlignmentManager::load(void)
 
             // discordant pair
             qNameWithPairInfo = record.qName;
-            if ( optionManager->doPairedEndAnalysis() && checkPairedEndRead == true )
+            if ( optionManager->doPairedEndAnalysis(this->isLongRead) && checkPairedEndRead == true )
             {
                 this->pairedEndRead->parseReadRecord(qNameWithPairInfo, record);
                 ++pairedReadCount;
@@ -217,18 +221,20 @@ bool AlignmentManager::load(void)
                 ++splitReadCount;
             }
         }
+        if (!this->isLongRead)
+            optionManager->setShortReadLength(static_cast<int>(std::round(running_sum / 1000000)));
 
         // dataset contains small number of reads
         if (this->maxAbInsSize < 0 && this->readsForMedInsEst.size() != 0)
             this->calcInsertSize();
 
         // check records used in median estimation
-        if (optionManager->doPairedEndAnalysis())
+        if (optionManager->doPairedEndAnalysis(this->isLongRead))
         {
             for (unsigned i=0; i < this->readsForMedInsEst.size(); ++i)
             {
-                BamAlignmentRecord& record = this->readsForMedInsEst[i].second;
-                
+                seqan::BamAlignmentRecord& record = this->readsForMedInsEst[i].second;
+
                 // just check insertion size. there is no chance to get orientation abnormality in these reads.
                 if (this->isAbnormalInsertion(abs(record.tLen)))
                 {
@@ -240,7 +246,7 @@ bool AlignmentManager::load(void)
             this->readsForMedInsEst.clear();
         }
     }
-    catch (Exception const & e)
+    catch (seqan::Exception const & e)
     {
         std::cerr << "ERROR: " << e.what() << std::endl;
         return false;
@@ -268,31 +274,31 @@ void AlignmentManager::calcInsertSize(void)
     this->insertDev = (double) (MID_ELEMENT(readsForMedInsEst).first);
     //this->insertDev = (double) (MID_ELEMENT(readsForMedInsEst).first) * AlignmentManager::K;
 
-    // approximated standard deviation    
+    // approximated standard deviation
     this->minAbInsSize = this->insertMedian - (this->insertDev) * optionManager->getAbInsParam();
-    this->maxAbInsSize = this->insertMedian + (this->insertDev) * optionManager->getAbInsParam(); 
+    this->maxAbInsSize = this->insertMedian + (this->insertDev) * optionManager->getAbInsParam();
 
     printTimeMessage("Estimated insertion size (median, MAD): " + \
                       std::to_string((int)this->insertMedian) + \
                       "," + std::to_string((int)this->insertDev));
 }
 
-void AlignmentManager::printRecord(BamAlignmentRecord & record) 
-{ 
-    writeRecord(*this->pBamFileOut, record); 
+void AlignmentManager::printRecord(seqan::BamAlignmentRecord & record)
+{
+    seqan::writeRecord(*this->pBamFileOut, record);
 }
 
-CharString AlignmentManager::getRefName(int32_t id)
+seqan::CharString AlignmentManager::getRefName(int32_t id)
 {
-    return contigNames(context(this->bamFileIn))[id];
+    return seqan::contigNames(seqan::context(this->bamFileIn))[id];
 }
 
 int32_t AlignmentManager::getRefCount()
 {
-    return length(contigNames(context(this->bamFileIn)));
+    return length(seqan::contigNames(seqan::context(this->bamFileIn)));
 }
 
-void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>& depth, TTemplateID rID, TPosition beginPos, TPosition endPos)
+void AlignmentManager::getSequenceAndDepth(seqan::CharString& seq, std::vector<int32_t>& depth, TTemplateID rID, TPosition beginPos, TPosition endPos)
 {
     // init
     seq = "";
@@ -305,10 +311,10 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
     for (int i=0; i < depthSize; ++i)
         depth.push_back(0);
 
-        
+
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
@@ -318,17 +324,17 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
 
     // search
     //int32_t clippedReadEditDistance = optionManager->getClippedReadEditDistance();
-    BamAlignmentRecord record;
+    seqan::BamAlignmentRecord record;
     while ( !atEnd(this->bamFileIn) )
     {
-        readRecord(record, this->bamFileIn);
+        seqan::readRecord(record, this->bamFileIn);
 
          // stop retrival
         if (record.rID == -1 || record.rID > rID || record.beginPos >= endPos)
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
           continue;
 
@@ -347,9 +353,9 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
 
         // edit distance based filter
         /*
-        BamTagsDict tagsDict(record.tags);
+        seqan::BamTagsDict tagsDict(record.tags);
         int32_t editDistance, tagIdx;
-        if ( findTagKey(tagIdx, tagsDict, "NM") )   
+        if ( seqan::findTagKey(tagIdx, tagsDict, "NM") )
         {
             extractTagValue(editDistance, tagsDict, tagIdx);
             if (editDistance > clippedReadEditDistance)
@@ -357,16 +363,16 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
         }
         */
 
-        // if (hasFlagRC(record)) // wrong
-        //     reverseComplement(record.seq);
-       
+        // if (seqan::hasFlagRC(record)) // wrong
+        //     seqan::reverseComplement(record.seq);
+
         // calc. seq
         int32_t seqStart = beginPos - record.beginPos;
 
         if (seqStart < 0)
             seqStart = 0;
         if (record.cigar[0].operation == 'S')
-            seqStart += record.cigar[0].count;       
+            seqStart += record.cigar[0].count;
 
         for (int i=startIdx; i < endIdx && seqStart < length(record.seq); ++i, ++seqStart)
             ++profile[i][record.seq[seqStart]];
@@ -379,9 +385,9 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
     for (int i=0; i < profile.size(); ++i)
     {
         if (profile[i].size() == 0)
-            appendValue(seq, 'N');
+            seqan::appendValue(seq, 'N');
         else if (profile[i].size() == 1)
-            appendValue(seq, profile[i].begin()->first);
+            seqan::appendValue(seq, profile[i].begin()->first);
         else
         {
             it = profile[i].begin();
@@ -396,45 +402,45 @@ void AlignmentManager::getSequenceAndDepth(CharString& seq, std::vector<int32_t>
                 }
                 ++it;
             }
-            appendValue(seq, topIt->first);
+            seqan::appendValue(seq, topIt->first);
         }
     }
 }
 
-void AlignmentManager::getSequence(CharString& seq, TTemplateID rID, TPosition beginPos, TPosition endPos)
+void AlignmentManager::getSequence(seqan::CharString& seq, TTemplateID rID, TPosition beginPos, TPosition endPos)
 {
     // init
-    clear(seq);
-    std::vector<std::map<char,int32_t> > profile;
+    seqan::clear(seq);
+    std::vector<std::map<char, int32_t> > profile;
     int32_t seqSize = (endPos - beginPos);
     profile.resize(seqSize);
-        
+
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
     }
     if (!hasAlignments)
         return;
-    
+
     // search
     //int32_t clippedReadEditDistance = optionManager->getClippedReadEditDistance();
-    BamAlignmentRecord record;
+    seqan::BamAlignmentRecord record;
     while ( !atEnd(this->bamFileIn) )
     {
-        readRecord(record, this->bamFileIn);
+        seqan::readRecord(record, this->bamFileIn);
 
          // stop retrival
         if (record.rID == -1 || record.rID > rID || record.beginPos >= endPos)
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
           continue;
-       
+
         // calc. seq
         int32_t startIdx = record.beginPos - beginPos;
         int32_t endIdx = startIdx + len;
@@ -450,7 +456,7 @@ void AlignmentManager::getSequence(CharString& seq, TTemplateID rID, TPosition b
         if (seqStart < 0)
             seqStart = 0;
         if (record.cigar[0].operation == 'S')
-            seqStart += record.cigar[0].count;       
+            seqStart += record.cigar[0].count;
 
         for (int i=startIdx; i < endIdx && seqStart < length(record.seq); ++i, ++seqStart)
             ++profile[i][record.seq[seqStart]];
@@ -463,9 +469,9 @@ void AlignmentManager::getSequence(CharString& seq, TTemplateID rID, TPosition b
     for (int i=0; i < profile.size(); ++i)
     {
         if (profile[i].size() == 0)
-            appendValue(seq, 'N');
+            seqan::appendValue(seq, 'N');
         else if (profile[i].size() == 1)
-            appendValue(seq, profile[i].begin()->first);
+            seqan::appendValue(seq, profile[i].begin()->first);
         else
         {
             it = profile[i].begin();
@@ -480,7 +486,7 @@ void AlignmentManager::getSequence(CharString& seq, TTemplateID rID, TPosition b
                 }
                 ++it;
             }
-            appendValue(seq, topIt->first);
+            seqan::appendValue(seq, topIt->first);
         }
     }
 }
@@ -496,7 +502,7 @@ void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TP
 
     // Jump the BGZF stream to this position.
     bool hasAlignments = false;
-    if (!jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
+    if (!seqan::jumpToRegion(this->bamFileIn, hasAlignments, rID, beginPos, endPos, baiIndex))
     {
         std::cerr << "ERROR: Could not jump to " << rID << ":" << beginPos << "-" << endPos << "\n";
         return;
@@ -505,17 +511,17 @@ void AlignmentManager::getDepth(std::vector<int32_t>& depth, TTemplateID rID, TP
         return;
 
     // search
-    BamAlignmentRecord record;
+    seqan::BamAlignmentRecord record;
     while ( !atEnd(this->bamFileIn) )
     {
-        readRecord(record, this->bamFileIn);
+        seqan::readRecord(record, this->bamFileIn);
 
          // stop retrival
         if (record.rID == -1 || record.rID > rID || record.beginPos >= endPos)
             break;
 
         // skip
-        int32_t len = getAlignmentLengthInRef(record);
+        int32_t len = seqan::getAlignmentLengthInRef(record);
         if ( (record.beginPos + len) <= beginPos)
             continue;
 

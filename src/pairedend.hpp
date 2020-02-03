@@ -49,7 +49,7 @@ class PairedEndRead : public BreakpointCandidate
         PairedEndRead(CallOptionManager* o) : BreakpointCandidate(o) {};
 
         bool analyze(void);
-        void parseReadRecord(TReadName&, BamAlignmentRecord&);
+        void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&);
 		
         bool isNew(TReadName&);
         bool isBreakpointUsed(Breakpoint* bp) { return this->breakpointIsUsedInfo[bp]; }

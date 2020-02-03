@@ -34,110 +34,120 @@
 #ifndef APP_CALLOPTION_H_
 #define APP_CALLOPTION_H_
 
-#include <seqan/sequence.h>
-#include <seqan/arg_parse.h>
 
-using namespace seqan;
+#include <seqan3/argument_parser/all.hpp>
 
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-class CallOptionManager : public ArgumentParser
+
+class CallOptionManager : seqan3::argument_parser
 {
     private :
-        CharString inputFile;
-        CharString outputFile;
-        CharString outputFormat;
+        std::string inputFile;
+        std::string inputFileLong;
+        std::string outputFile;
+        std::string outputFormat;
 
         // general options
-        int32_t minMapQual;
-        int32_t minSVSize;
-        int32_t adjTol;
-        int32_t cutoff;
-        int32_t minVote;
+        int32_t minMapQual{20};
+        int32_t minSVSize{50};
+        int32_t adjTol{50};
+        int32_t cutoff{4};
+        int32_t minVote{-1};
         int32_t priMethod;
         int32_t filterMethod;
-        unsigned int threadCount;
-        bool writeBreakpoint;
-        bool reportFilteredResult;
-        bool useRankAggregation;
+        uint32_t threadCount{std::thread::hardware_concurrency()};
+        int shortReadLength{0};
+        bool writeBreakpoint{false};
+        bool reportFilteredResult{false};
+        bool skipRankAggregation{false};
+        bool skipPolishing{false};
 
         // for split-read
-        double minSplitReadSupport;
-        int32_t maxSplit;
-        int32_t maxOverlap;
+        double minSplitReadSupport{1};
+        int32_t maxSplit{2};
+        int32_t maxSplitLong{7};
+        int32_t maxOverlap{20};
+        int32_t maxOverlapLong{1000};
 
         // for paired-end
-        double minPairSupport;
-        double abInsParam;
-        double depthOutlier;
-        int32_t pairedEndSearchSize;
-        bool doPairedEndRead;
-        
+        double minPairSupport{1.0};
+        double abInsParam{9.0};
+        double depthOutlier{1.0};
+        int32_t pairedEndSearchSize{500};
+        bool skipPairedEndRead{true};
+
         // for clipped read
         double minClippedReadSupport;
-        int32_t minClippedSeqSize;
-        CharString referenceGenome;
-        double clippedSeqErrorRate;
-        bool doClippedRead;
-        bool useAssembly;
+        int32_t minClippedSeqSize{20};
+        std::string referenceGenome;
+        double clippedSeqErrorRate{0.1};
+        bool skipClippedRead{true};
+        bool useAssembly{false};
 
         // for read-depth analysis
-        double reThreshold;
-        int32_t samplingNum;
-        int32_t readDepthWindowSize;
-        bool doReadDepth;
-        bool useREforBalancedSV;
+        double reThreshold{1.0};
+        int32_t samplingNum{100000};
+        int32_t readDepthWindowSize{20};
+        bool skipReadDepth{true};
+        bool useREforBalancedSV{false};
 
     public :
-    	CallOptionManager()
-    	{
-    		threadCount = 0;
-#ifdef _OPENMP
-	    	threadCount = std::thread::hardware_concurrency();
-#endif
-    	}
+        using seqan3::argument_parser::argument_parser;
+//     	CallOptionManager()
+//     	{
+//     		threadCount = 0;
+// #ifdef _OPENMP
+// 	    	threadCount = std::thread::hardware_concurrency();
+// #endif
+//     	}
 
-    	void init(void);
-      	bool parseCommandLine(int argc, char const ** argv);
-        CharString getInputFile(void) { return inputFile; }
+    	void init_options();
+      	int parseCommandLine();
+        std::string getInputFile(bool longRead = false);
+        std::string getOutputFile(void) { return outputFile; }
         void printUserInput(void);
         std::string getBooleanString(bool);
 
         // general options
-        int32_t getMinMapQual(void) { return minMapQual; } 
+        int32_t getMinMapQual(void) { return minMapQual; }
         int32_t getMinSVSize(void) { return minSVSize; }
         int32_t getAdjTol(void) { return adjTol; }
         int32_t getCutoff(void) { return cutoff; }
         int32_t getMinVote(void) { return minVote; }
         int32_t getPriMethod(void) { return priMethod; }
         int32_t getFilterMethod(void) { return filterMethod; }
+        unsigned getThreadCount(void) { return threadCount; }
         bool getWriteBreakpoint(void) { return writeBreakpoint; }
         bool getReportFilteredResult(void) { return reportFilteredResult; }
-        bool getUseRankAggregation(void) { return useRankAggregation; }
+        bool getUseRankAggregation(void) { return !skipRankAggregation; }
         void setMinVote(int v) { this->minVote = v;}
+        bool getPolishing(void) {return !skipPolishing; }
+        void setShortReadLength(int average) { this->shortReadLength = average; }
+        int getShortReadLength() { return this->shortReadLength; }
 
         // for split-read
         double getMinSplitReadSupport(void) { return minSplitReadSupport; }
-        int32_t getMaxSplit(void) { return maxSplit; }
-        int32_t getMaxOverlap(void) { return maxOverlap; }
+        int32_t getMaxSplit(bool isLongRead = false) { return isLongRead ? maxSplitLong : maxSplit; }
+        int32_t getMaxOverlap(bool isLongRead = false) { return isLongRead ? maxOverlapLong : maxOverlap; }
 
         // for paired-end
-        bool doPairedEndAnalysis(void) { return doPairedEndRead; }
+        bool doPairedEndAnalysis(bool longRead = false) { return (!skipPairedEndRead && !longRead); }
         double getAbInsParam(void) { return abInsParam; }
         double getMinPairSupport(void) { return minPairSupport; }
         double getPairedEndSearchSize(void) { return pairedEndSearchSize;}
         double getDepthOutlier(void) { return depthOutlier;}
 
         // for clipped read
-        bool doClippedReadAnalysis(void) { return doClippedRead; }
+        bool doClippedReadAnalysis(void) { return !skipClippedRead; }
         int32_t getMinClippedSeqSize(void) { return minClippedSeqSize; }
-        CharString getReferenceGenome(void) { return referenceGenome; }
+        std::string getReferenceGenome(void) { return referenceGenome; }
         double getClippedSeqErrorRate(void) { return clippedSeqErrorRate; }
         int32_t isUsingAssembly(void) { return useAssembly; }
 
         // for read-depth analysis
-        bool doReadDepthAnalysis(void) { return doReadDepth; }
+        bool doReadDepthAnalysis(bool longRead = false) { return (!skipReadDepth && !longRead); }
         int32_t getReadDepthWindowSize(void) { return readDepthWindowSize; }
         double getReOutlierCutoff(void) { return reThreshold; }
         int32_t getSamplingNum(void) { return samplingNum; }

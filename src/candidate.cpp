@@ -36,27 +36,27 @@
 #include "misc.hpp"
 #include "candidate.hpp"
 
-void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, BamAlignmentRecord &record, \
+void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, seqan::BamAlignmentRecord &record, \
                                      bool checkIndel, bool checkClip, TPosition minSVSize, TPosition minClippedSeqSize)
 {
     // reference position 0-based, [begin, end)
     alnInfo.refSegment.templateID = record.rID;
     alnInfo.refSegment.beginPos = record.beginPos;
-    alnInfo.refSegment.isReverse = hasFlagRC(record);
+    alnInfo.refSegment.isReverse = seqan::hasFlagRC(record);
     alnInfo.querySegment.templateID = record._qID; // TODO : SeqAn seems not working properly here. (qID)
     alnInfo.querySegment.isReverse = alnInfo.refSegment.isReverse;
 
     // can't be decided  yet
-    TPosition refBeginPos = record.beginPos; 
-    TPosition refEndPos = record.beginPos; 
+    TPosition refBeginPos = record.beginPos;
+    TPosition refEndPos = record.beginPos;
     TPosition queryBeginPos = BreakpointEvidence::INVALID_POS;
-    TPosition queryEndPos = BreakpointEvidence::INVALID_POS; 
+    TPosition queryEndPos = BreakpointEvidence::INVALID_POS;
     TPosition querySize = 0;
 
     // parse CIGAR string
     BreakpointEvidence be;
     for (unsigned i=0; i != length(record.cigar); ++i)
-    { 
+    {
         switch (record.cigar[i].operation)
         {
             case 'M' : // alignment match
@@ -72,12 +72,12 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                     queryEndPos += record.cigar[i].count;
                 querySize += record.cigar[i].count;
                 break;
-            case 'S' : // soft clip 
+            case 'S' : // soft clip
                 if ( checkClip == true )
                 {
                     if (record.cigar[i].count >= minClippedSeqSize)
                     {
-                        be.leftSegment.isReverse = hasFlagRC(record);
+                        be.leftSegment.isReverse = seqan::hasFlagRC(record);
                         be.rightSegment.isReverse = be.leftSegment.isReverse;
                         be.suppRead = 1;
 
@@ -98,19 +98,19 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                             //be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
                             alnInfo.clippedList.push_back(be);
                         }
-                        
+
                         if (i == (length(record.cigar) - 1)) // right side clip
                         {
                             be.leftSegment.templateID = record.rID;
                             be.leftSegment.endPos = refEndPos;
-                            be.leftSegment.beginPos = be.leftSegment.endPos - 1;    
-                            be.leftSegment.isReverse = alnInfo.refSegment.isReverse;    
+                            be.leftSegment.beginPos = be.leftSegment.endPos - 1;
+                            be.leftSegment.isReverse = alnInfo.refSegment.isReverse;
                             //be.rightSegment.templateID = record.rID;
                             //be.rightSegment.endPos = refEndPos;
-                            //be.rightSegment.beginPos = be.leftSegment.endPos - 1;                   
+                            //be.rightSegment.beginPos = be.leftSegment.endPos - 1;
                             be.rightSegment.templateID = BreakpointEvidence::NOVEL_TEMPLATE;
                             be.rightSegment.beginPos = BreakpointEvidence::INVALID_POS;
-                            be.rightSegment.endPos = BreakpointEvidence::INVALID_POS;                               
+                            be.rightSegment.endPos = BreakpointEvidence::INVALID_POS;
                             be.sequence = suffix(record.seq, length(record.seq) - record.cigar[i].count);
                             be.orientation = BreakpointEvidence::ORIENTATION::CLIPPED;
                             //be.orientation = BreakpointEvidence::ORIENTATION::NOT_DECIDED;
@@ -140,7 +140,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                     queryBeginPos = record.cigar[i].count;
                     queryEndPos = queryBeginPos;
                 }
-            
+
                 // find indels equal or larger than minSVSize (consider deletions only)
                 if ( checkIndel == true && record.cigar[i].count >= minSVSize )
                 {
@@ -150,7 +150,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                     be.leftSegment.templateID = record.rID;
                     be.leftSegment.beginPos = delRefBeginPos;
                     be.leftSegment.endPos = be.leftSegment.beginPos + 1;
-                    be.leftSegment.isReverse = hasFlagRC(record);
+                    be.leftSegment.isReverse = seqan::hasFlagRC(record);
 
                     be.rightSegment.templateID = record.rID;
                     be.rightSegment.beginPos = refEndPos;
@@ -164,7 +164,7 @@ void BreakpointCandidate::parseCIGAR(AlignmentInfo &alnInfo, TReadID &readID, Ba
                 refEndPos += record.cigar[i].count;
         }
     } // end parse CIGAR
-    
+
     // reference position 0-based, [begin, end)
     alnInfo.refSegment.endPos = refEndPos;
     alnInfo.querySize = querySize;
@@ -186,7 +186,7 @@ TBreakpointSet::iterator BreakpointCandidate::removeBreakpoint(TBreakpointSet::i
     // remove indices
     leftIndex->remove((*bpIt)->minLeftPos, (*bpIt)->maxLeftPos, *bpIt);
     rightIndex->remove((*bpIt)->minRightPos, (*bpIt)->maxRightPos, *bpIt);
-    
+
     // destroy breakpoint instance
     delete *bpIt;
 
@@ -314,13 +314,13 @@ Breakpoint* BreakpointCandidate::updateBreakpoint(Breakpoint* bp, bool& isNew)
         updateBreakpointIndex(destBp);
         isNew = false;
         return destBp;
-    } 
+    }
     else // or add (new breakpoint)
     {
         this->addNewBreakpoint(bp);
         isNew = true;
         return bp;
-    }    
+    }
 }
 
 Breakpoint* BreakpointCandidate::updateBreakpoint(BreakpointEvidence& be, bool& isNew)
@@ -330,35 +330,35 @@ Breakpoint* BreakpointCandidate::updateBreakpoint(BreakpointEvidence& be, bool& 
 
     // left side
     if ( (be.leftSegment.endPos - be.leftSegment.beginPos) > 1)
-    {          
+    {
         // segment contains multiple candidate positions
         bp->minLeftPos = be.leftSegment.beginPos;
-        bp->maxLeftPos = be.leftSegment.endPos - 1; 
+        bp->maxLeftPos = be.leftSegment.endPos - 1;
         bp->leftPos.push_back(bp->minLeftPos);
         bp->leftPos.push_back(bp->maxLeftPos);
     }
     else
-    { 
+    {
         bp->minLeftPos = be.leftSegment.beginPos;
         bp->maxLeftPos = be.leftSegment.beginPos;
         bp->leftPos.push_back(bp->minLeftPos);
 
     }
-    bp->leftTemplateID = be.leftSegment.templateID; 
+    bp->leftTemplateID = be.leftSegment.templateID;
     bp->leftReverseFlag = be.leftSegment.isReverse;
     bp->needLeftIndexUpdate = false;
 
     // right side
     if ( (be.rightSegment.endPos - be.rightSegment.beginPos) > 1)
-    {   
+    {
         // segment contains multiple candidate positions
         bp->minRightPos = be.rightSegment.beginPos;
-        bp->maxRightPos = be.rightSegment.endPos - 1; 
+        bp->maxRightPos = be.rightSegment.endPos - 1;
         bp->rightPos.push_back(bp->minRightPos);
         bp->rightPos.push_back(bp->maxRightPos);
     }
     else
-    { 
+    {
         bp->minRightPos = be.rightSegment.beginPos;
         bp->maxRightPos = be.rightSegment.beginPos;
         bp->rightPos.push_back(bp->minRightPos);
@@ -424,7 +424,7 @@ void BreakpointCandidate::updateBreakpointIndex(Breakpoint* bp)
         bp->needLeftIndexUpdate = false;
 
         index->add(bp->minLeftPos, bp->maxLeftPos, bp);
-        
+
     }
 
     if (bp->needRightIndexUpdate == true)
@@ -443,7 +443,7 @@ void BreakpointCandidate::addNewBreakpoint(Breakpoint* bp)
 {
     // register
     this->breakpoints.insert(bp);
- 
+
     // update index
     TBreakpointIntervalIndex *leftIndex = this->getIndex(BreakpointEvidence::LEFT, bp->leftTemplateID);
     TBreakpointIntervalIndex *rightIndex = this->getIndex(BreakpointEvidence::RIGHT, bp->rightTemplateID);
@@ -487,7 +487,7 @@ TBreakpointSet::iterator BreakpointCandidate::mergeBreakpoint(Breakpoint* destBp
         }
     }
     destBp->bFoundExactPosition = (destBp->bFoundExactPosition || srcBp->bFoundExactPosition);
-    
+
     // do additional jobs
     doAdditionalJobAfterMerge(destBp, srcBp);
 
@@ -508,7 +508,7 @@ TBreakpointIntervalIndex* BreakpointCandidate::getIndex(BreakpointEvidence::SIDE
             leftIndexMap.insert(std::make_pair(id, \
                                 new IntervalIndex<Breakpoint*> (GENOMIC_BIN_SIZE, op->getAdjTol(), this->isMatchedBreakpoint)));
         }
-        
+
         return leftIndexMap[id];
     }
     else if (side == BreakpointEvidence::RIGHT)
@@ -561,8 +561,8 @@ bool BreakpointCandidate::isAdjacent(TPosition pos1, TPosition pos2, TPosition t
 }
 
 bool BreakpointCandidate::isAdjacent(SequenceSegment& s1, SequenceSegment& s2)
-{    
-    return BreakpointCandidate::isAdjacent(s1.beginPos, s1.endPos, s2.beginPos, s2.endPos, this->getPositionalAdj()); 
+{
+    return BreakpointCandidate::isAdjacent(s1.beginPos, s1.endPos, s2.beginPos, s2.endPos, this->getPositionalAdj());
 }
 
 void BreakpointCandidate::setPositionWithAdj(TPosition &left, TPosition &right, TPosition adj)
@@ -644,7 +644,7 @@ void BreakpointCandidate::setInsertionInfo(double median, double stdev, double m
 
 BreakpointCandidate::~BreakpointCandidate()
 {
-    // release memory   
+    // release memory
     for(auto it = this->breakpoints.begin(); it != this->breakpoints.end(); ++it)
         delete *it;
     breakpoints.clear();
@@ -656,7 +656,7 @@ BreakpointCandidate::~BreakpointCandidate()
     for(auto it = this->rightIndexMap.begin(); it != this->rightIndexMap.end(); ++it)
         delete it->second;
     rightIndexMap.clear();
-} 
+}
 
 BreakpointCandidate::BreakpointCandidate(CallOptionManager* op)
 {

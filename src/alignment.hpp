@@ -40,7 +40,7 @@
 // ==========================================================================
 // Tags, Classes, Enums
 // ==========================================================================
-typedef std::pair<int32_t, BamAlignmentRecord> TInsBamRecordPair;
+typedef std::pair<int32_t, seqan::BamAlignmentRecord> TInsBamRecordPair;
 class AlignmentManager
 {
     private :
@@ -53,10 +53,11 @@ class AlignmentManager
         CallOptionManager* optionManager;
 
         // bam record
-        BamFileIn       bamFileIn;
-        BamHeader       bamHeader;
-        BamIndex<Bai>   baiIndex;
-        BamFileOut*     pBamFileOut;
+        bool                        isLongRead;
+        seqan::BamFileIn            bamFileIn;
+        seqan::BamHeader            bamHeader;
+        seqan::BamIndex<seqan::Bai> baiIndex;
+        seqan::BamFileOut*          pBamFileOut{nullptr};
 
         // breakpoint candidates
         BreakpointCandidate* splitRead;
@@ -67,7 +68,7 @@ class AlignmentManager
         // information of a dataset
         std::map<TTemplateID, TPosition> templateLength;
         std::vector<TInsBamRecordPair> readsForMedInsEst;
-        std::vector<BamAlignmentRecord> readsBuffer;
+        std::vector<seqan::BamAlignmentRecord> readsBuffer;
         double insertMedian;
         double insertDev; // median absolute deviation
         double minAbInsSize;
@@ -81,23 +82,24 @@ class AlignmentManager
         //bool isAbnormalInsertion(unsigned ins) { return ( (ins < this->minAbInsSize) || (ins > this->maxAbInsSize) ); }
         bool isAbnormalInsertion(unsigned ins) { return (ins > this->maxAbInsSize); }
         double getMaxAbInsSize(void) { return this->maxAbInsSize; }
-        double getMinAbInsSize(void) { return this->minAbInsSize; }        
+        double getMinAbInsSize(void) { return this->minAbInsSize; }
         static bool pairCompare(const TInsBamRecordPair& e1, const TInsBamRecordPair& e2) { return e1.first < e2.first; }
 
     public :
         AlignmentManager() : optionManager(NULL) {}
-    	AlignmentManager(CallOptionManager & op) { init(op); }
-        ~AlignmentManager() 
+    	AlignmentManager(CallOptionManager & op, bool lr = false) : isLongRead(lr) { init(op); }
+        ~AlignmentManager()
         {
             close(bamFileIn);
-            close(*pBamFileOut);
+            if (pBamFileOut)
+                close(*pBamFileOut);
         }
-   	
+
         void init(CallOptionManager & op)
-        { 
-            optionManager = &op; 
-            insertMedian = 0; 
-            insertDev = 0.0; 
+        {
+            optionManager = &op;
+            insertMedian = 0;
+            insertDev = 0.0;
             minAbInsSize = std::numeric_limits<double>::min();
             maxAbInsSize = std::numeric_limits<double>::max();
             splitReadCount = 0;
@@ -114,10 +116,11 @@ class AlignmentManager
         }
 
         // [start, end)
-        void getSequenceAndDepth(CharString&, std::vector<int32_t>&, TTemplateID, TPosition, TPosition);
-        void getSequence(CharString&, TTemplateID, TPosition, TPosition);
+        void getSequenceAndDepth(seqan::CharString&, std::vector<int32_t>&, TTemplateID, TPosition, TPosition);
+        void getSequence(seqan::CharString&, TTemplateID, TPosition, TPosition);
         void getDepth(std::vector<int32_t>&, TTemplateID, TPosition, TPosition);
 
+        bool getLongRead() { return isLongRead; }
         int32_t getSplitReadCount(void) { return splitReadCount; }
         int32_t getPairedReadCount(void) { return pairedReadCount; }
         int32_t getClippedReadCount(void) { return clippedReadCount; }
@@ -125,12 +128,12 @@ class AlignmentManager
         double getInsMedian() { return insertMedian; }
         double getInsSD() { return insertDev; }
         double getAbInsParam() { return optionManager->getAbInsParam(); }
-        CharString getRefName(int32_t id);
+        seqan::CharString getRefName(int32_t id);
         int32_t getRefCount();
         std::map<TTemplateID, TPosition>* getTemplateLength(void) { return &templateLength; }
 
         CallOptionManager* getOptionManager(void) { return this->optionManager; }
-        void printRecord(BamAlignmentRecord &);
-        bool load(void);
+        void printRecord(seqan::BamAlignmentRecord &);
+        bool load();
 };
 #endif // APP_ALIGNMENT_H_

@@ -16,10 +16,14 @@ endif()
 
 # Dependencies
 find_package (ZLIB)
+find_package(OpenMP)
+find_package (SEQAN3 REQUIRED HINTS ${CMAKE_SOURCE_DIR}/seqan3/build_system)
 find_package (SeqAn REQUIRED)
+set (CMAKE_EXE_LINKER_FLAGS "")
 
 # Build setup
 include_directories (${SEQAN_INCLUDE_DIRS})
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/../SViper/include/)
 add_definitions (${SEQAN_DEFINITIONS})
 add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
 add_definitions (-DSEQAN_DATE="${SEQAN_APP_DATE}")
@@ -30,4 +34,4 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
 
 # Add executable and link against SeqAn dependencies.
 add_executable (vaquita vaquita.cpp misc.cpp option.cpp calloption.cpp mergeoption.cpp alignment.cpp candidate.cpp splitread.cpp pairedend.cpp clippedread.cpp mergedcandidate.cpp readdepth.cpp breakpoint.cpp sv.cpp svmerge.cpp)
-target_link_libraries (vaquita ${SEQAN_LIBRARIES})
+target_link_libraries (vaquita ${SEQAN_LIBRARIES} seqan3::seqan3)

@@ -38,13 +38,13 @@
 bool SplitRead::updateBreakpointByIndels(std::vector<BreakpointEvidence>& beList)
 {
     bool isNew;
-    for (unsigned i=0; i < beList.size(); ++i) // for each 
+    for (unsigned i=0; i < beList.size(); ++i) // for each
     {
         BreakpointEvidence& be = beList[i];
         Breakpoint* bp = this->updateBreakpoint(be, isNew);
 
         // every breakpoints based on split-read have exact positions.
-        bp->bFoundExactPosition = true; 
+        bp->bFoundExactPosition = true;
     }
 
     return true;
@@ -56,14 +56,14 @@ bool SplitRead::analyzeRead(TReadName& readName)
     if (itRead == this->recordByRead.end())
         return false;
 
-    if (itRead->second.size() > this->getOptionManager()->getMaxSplit()) // not confident (too-many segments)
+    if (itRead->second.size() > this->getOptionManager()->getMaxSplit(this->isLongRead)) // not confident (too-many segments)
         return false;
-    
+
     // get readID
     TReadID readID = this->getNextReadID(); // this must be unique
-    
+
     // extract information form local alignments
-    uint32_t minQuality = MaxValue<uint32_t>::VALUE;;
+    uint32_t minQuality = seqan::MaxValue<uint32_t>::VALUE;;
     std::vector<AlignmentInfo> localAligns;
     TPosition querySize = 0;
     for(auto it = itRead->second.begin(); it != itRead->second.end(); ++it) // for each segment
@@ -87,12 +87,12 @@ bool SplitRead::analyzeRead(TReadName& readName)
 
     // sort according to the start position in the query
     sort(localAligns.begin(), localAligns.end(), BreakpointCandidate::compareByQueryPos);
-  
+
     // check indels in the the first segment
     this->updateBreakpointByIndels( FIRST_ELEMENT(localAligns).indelList );
 
     // for each alignment
-    unsigned maxOverlapSize = this->getOptionManager()->getMaxOverlap();
+    unsigned maxOverlapSize = this->getOptionManager()->getMaxOverlap(this->isLongRead);
     for(unsigned int i=1; i < localAligns.size(); ++i)
     {
         // check indels
@@ -108,10 +108,10 @@ bool SplitRead::analyzeRead(TReadName& readName)
         unsigned overlapSize = maxOverlapSize + 1; // will be filtered by default. (must be rescued)
 
         // same strand
-        if (qSeg1.isReverse == qSeg2.isReverse) 
+        if (qSeg1.isReverse == qSeg2.isReverse)
         {
             if (this->isAdjacent(qSeg1, qSeg2)) // adjacent
-                skipThis = false; 
+                skipThis = false;
             else if (this->isOverlap(qSeg1, qSeg2)) // overlap
             {
                 if (qSeg2.beginPos > qSeg1.endPos)
@@ -128,7 +128,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
             _qSeg2.endPos = querySize - qSeg2.beginPos;
 
             if (this->isAdjacent(qSeg1, _qSeg2)) // adjacent
-                skipThis = false; 
+                skipThis = false;
             else if (this->isOverlap(qSeg1, _qSeg2)) // overalp
             {
                 if (qSeg1.beginPos <= _qSeg2.beginPos)
@@ -156,8 +156,8 @@ bool SplitRead::analyzeRead(TReadName& readName)
 
         // find breakpoint
         if (skipThis == false)
-        {   
-            SequenceSegment* leftRefSeg; 
+        {
+            SequenceSegment* leftRefSeg;
             SequenceSegment* rightRefSeg;
 
             BreakpointEvidence be;
@@ -181,7 +181,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
                         leftRefSeg = &rSeg2;
                         rightRefSeg = &rSeg1;
                         be.orientation = BreakpointEvidence::ORIENTATION::SWAPPED; // -> -
-                        be.leftSegment.beginPos = leftRefSeg->beginPos;   
+                        be.leftSegment.beginPos = leftRefSeg->beginPos;
                         be.rightSegment.beginPos = rightRefSeg->endPos - 1;
                     }
                 }
@@ -230,7 +230,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
                         {
                             be.leftSegment.beginPos = leftRefSeg->beginPos;
                             be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
-                        }   
+                        }
                     }
                 }
 
@@ -243,7 +243,7 @@ bool SplitRead::analyzeRead(TReadName& readName)
             }
             else // decided by positions in query
             {
-                SequenceSegment* leftQuerySeg; 
+                SequenceSegment* leftQuerySeg;
                 SequenceSegment* rightQuerySeg;
 
                 leftQuerySeg = &qSeg1;
@@ -259,14 +259,14 @@ bool SplitRead::analyzeRead(TReadName& readName)
                 be.leftSegment.endPos = be.leftSegment.beginPos + 1;
 
                 be.rightSegment.templateID = rightRefSeg->templateID;
-                be.rightSegment.isReverse = rightRefSeg->isReverse;               
+                be.rightSegment.isReverse = rightRefSeg->isReverse;
                 be.rightSegment.beginPos = rightRefSeg->beginPos - 1;
                 be.rightSegment.endPos = be.rightSegment.beginPos + 1;
             }
 
             bool isNew;
             Breakpoint *newBp = this->updateBreakpoint(be, isNew);
-            newBp->bFoundExactPosition = true;                
+            newBp->bFoundExactPosition = true;
         }
     }
 
@@ -313,20 +313,20 @@ bool SplitRead::analyze()
     return true;
 }
 
-void SplitRead::checkReadRecord(TReadName &readName, BamAlignmentRecord &record)
+void SplitRead::checkReadRecord(TReadName &readName, seqan::BamAlignmentRecord &record)
 {
     TReadName nextPairName = readName;
 
-    if ( hasFlagFirst(record) )
+    if ( seqan::hasFlagFirst(record) )
     {
         readName += "/1";
         nextPairName += "/2";
     }
-    else // ( hasFlagLast(record) )
+    else // ( seqan::hasFlagLast(record) )
     {
-        readName += "/2";        
+        readName += "/2";
         nextPairName += "/1";
-    }    
+    }
 
     // add read
     if (this->recordByRead.find(readName) == this->recordByRead.end())
@@ -336,7 +336,7 @@ void SplitRead::checkReadRecord(TReadName &readName, BamAlignmentRecord &record)
     }
 }
 
-void SplitRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
+void SplitRead::parseReadRecord(TReadName &readName, seqan::BamAlignmentRecord &record)
 {
     this->checkReadRecord(readName, record);
 
@@ -362,7 +362,7 @@ void SplitRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
     if (lastChrmId != record.rID)
     {
         bool result;
-        RUN(result,"Analyze chromosome " + std::string(toCString(contigNames(context(*this->fileIn))[lastChrmId])), this->analyzeCurrentChromosome());
+        RUN(result,"Analyze chromosome " + CharStringToStdString(seqan::contigNames(seqan::context(*this->fileIn))[lastChrmId]), this->analyzeCurrentChromosome());
         lastChrmId = record.rID;
     }
 
@@ -370,7 +370,8 @@ void SplitRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
     this->recordByRead[readName].push_back(std::move(record));
 }
 
-void SplitRead::prepAfterHeaderParsing(BamHeader& header, BamFileIn& fileIn)
+void SplitRead::prepAfterHeaderParsing(seqan::BamHeader& header, seqan::BamFileIn& fileIn, bool isLongRead)
 {
     this->fileIn = &fileIn;
+    this->isLongRead = isLongRead;
 }

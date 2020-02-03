@@ -67,7 +67,7 @@ struct ClippedSequenceSegmentCompareByPosition {
 struct SearchRegion
 {
     SequenceSegment segment;
-    Dna5String sequence;
+    seqan::Dna5String sequence;
 };
 
 struct CandidateRegionPair
@@ -81,29 +81,29 @@ typedef std::vector<ClippedSequenceSegment>                                     
 class ClippedRead : public BreakpointCandidate
 {
     private :
-        static int32_t const MAX_SCORE = MaxValue<int32_t>::VALUE;
+        static int32_t const MAX_SCORE = seqan::MaxValue<int32_t>::VALUE;
 
-        FaiIndex faiIndex;
+        seqan::FaiIndex faiIndex;
         std::map<Breakpoint*, CandidateRegionPair> candidateRegion;
         std::map<TTemplateID, TPosition> templateSize;
-       
+
     public:
         ClippedRead(CallOptionManager* o):BreakpointCandidate(o) {};
 
-        void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
-        void parseReadRecord(TReadName&, BamAlignmentRecord&);
+        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&, bool isLongRead = false);
+        void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&);
         void setSearchRegionByOrientation(const BreakpointEvidence::ORIENTATION, const BreakpointEvidence::SIDE, Breakpoint&, TTemplateID&, TPosition&, TPosition&);
 
-        void getReferenceSequence(CharString& seq, CharString chr, TPosition start, TPosition end);
-        void getReferenceSequence(CharString& seq, TTemplateID templateID, TPosition start, TPosition end);
+        void getReferenceSequence(seqan::CharString& seq, seqan::CharString chr, TPosition start, TPosition end);
+        void getReferenceSequence(seqan::CharString& seq, TTemplateID templateID, TPosition start, TPosition end);
 
-        bool searchPairRegion(TFoundPosition&, Breakpoint*, int32_t&, CharString&, BreakpointEvidence::SIDE, bool, bool, BreakpointEvidence::ORIENTATION );
-        bool searchTwilightZone(TFoundPosition&, Breakpoint*, int32_t&, CharString&, BreakpointEvidence::SIDE, bool, BreakpointEvidence::ORIENTATION );
-        bool alignByMyersBitVector(TFoundPosition&, CharString&, CharString&, int32_t&);
-        bool alignByLocal(TFoundPosition&, CharString&, CharString&, int32_t&);
-        bool onlineSearchBySegment(TFoundPosition&, CharString&, CharString&, int32_t&);
+        bool searchPairRegion(TFoundPosition&, Breakpoint*, int32_t&, seqan::CharString&, BreakpointEvidence::SIDE, bool, bool, BreakpointEvidence::ORIENTATION );
+        bool searchTwilightZone(TFoundPosition&, Breakpoint*, int32_t&, seqan::CharString&, BreakpointEvidence::SIDE, bool, BreakpointEvidence::ORIENTATION );
+        bool alignByMyersBitVector(TFoundPosition&, seqan::CharString&, seqan::CharString&, int32_t&);
+        bool alignByLocal(TFoundPosition&, seqan::CharString&, seqan::CharString&, int32_t&);
+        bool onlineSearchBySegment(TFoundPosition&, seqan::CharString&, seqan::CharString&, int32_t&);
 
-        void getConsensusSequence(CharString&, Breakpoint*);
+        void getConsensusSequence(seqan::CharString&, Breakpoint*);
         static int32_t getMaxScore(void) { return ClippedRead::MAX_SCORE; }
 };
 

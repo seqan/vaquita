@@ -41,32 +41,33 @@ typedef IntervalIndex<SequenceSegment*>               TReadIndex;
 typedef std::map<double, std::map<double, double> >     TKLTable;
 
 class ReadDepth : public BreakpointCandidate
-{		
+{
     private:
 		std::map<TTemplateID, std::vector<uint8_t> > readDepthInfo;
 		TKLTable KLTable;
         double medianReadDepth = 0.0;
         double depthTH = 0.0;
-        double reTH = MaxValue<double>::VALUE;;
+        double reTH = seqan::MaxValue<double>::VALUE;;
         double depthLowerBound = 0.0;
-        double depthUpperBound = MaxValue<double>::VALUE;;
+        double depthUpperBound = seqan::MaxValue<double>::VALUE;;
         uint32_t baseCount = 0;
         uint32_t refSize = 0;
 
     public:
         ReadDepth(CallOptionManager* o):BreakpointCandidate(o) {};
 
-        void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
-        void parseReadRecord(CharString&, BamAlignmentRecord&);
+        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&, bool isLongRead = false);
+        void parseReadRecord(seqan::CharString&, seqan::BamAlignmentRecord&);
         void addUniformDepth(TTemplateID, TPosition, TPosition, unsigned);
         void calculateReadDepthStat(std::map<TTemplateID, unsigned>&, unsigned);
         void setMedianDepth(double d) { this->medianReadDepth = d; }
 
+        void longReadDepthCalc();
         double getDepthTH(void) { return this->depthTH; }
         double getPoissonP(unsigned k, double l);
     	double getKLScore(double a, double b);
 		void getAvgReadDepth(double&, double&, TTemplateID, TPosition, TPosition, TPosition, BreakpointEvidence::SIDE);
-		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);        
+		void getReadDepthDiffScore(double &, double&, double&, double&, TTemplateID, TPosition, TTemplateID, TPosition, TPosition, TPosition);
         void getReadDepthDiffScore(double& score, double& depth, TTemplateID t, TPosition p, TPosition windowSize);
         void setRandomSeed(int seed);
         void getRandomPos(TTemplateID& t, TPosition &p);

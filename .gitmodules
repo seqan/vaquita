@@ -1,0 +1,9 @@
+[submodule "seqan3"]
+	path = seqan3
+	url = git@github.com:seqan/seqan3.git
+[submodule "seqan"]
+	path = seqan
+	url = git@github.com:seqan/seqan.git
+[submodule "SViper"]
+	path = SViper
+	url = https://github.com/smehringer/SViper

@@ -39,7 +39,7 @@ void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, Breakpoin
 
     if (toward == BreakpointEvidence::SIDE::BOTH)
     {
-        BreakpointCandidate::setPositionWithAdj( min, max, this->getOptionManager()->getPairedEndSearchSize() );        
+        BreakpointCandidate::setPositionWithAdj( min, max, this->getOptionManager()->getPairedEndSearchSize() );
     }
     else if (toward == BreakpointEvidence::SIDE::RIGHT)
     {
@@ -51,7 +51,7 @@ void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, Breakpoin
     else
     {
         temp = min;
-        BreakpointCandidate::setPositionWithAdj( min, temp, this->getOptionManager()->getPairedEndSearchSize() );        
+        BreakpointCandidate::setPositionWithAdj( min, temp, this->getOptionManager()->getPairedEndSearchSize() );
         temp = max;
         BreakpointCandidate::setPositionWithAdj( temp, max, this->getOptionManager()->getMinSVSize() );
     }
@@ -60,8 +60,8 @@ void PairedEndRead::getCandidateRegion(TPosition &min, TPosition &max, Breakpoin
 bool PairedEndRead::analyze(void)
 {
     // change overlapped regions to breakpoint candidates
-    //TBreakpointSet* breakpoints = this->tempBreakpoints.getCandidateSet(); 
-    TBreakpointSet* breakpoints = this->getCandidateSet(); 
+    //TBreakpointSet* breakpoints = this->tempBreakpoints.getCandidateSet();
+    TBreakpointSet* breakpoints = this->getCandidateSet();
     auto it= breakpoints->begin();
     while ( it != breakpoints->end() )
     {
@@ -131,7 +131,7 @@ bool PairedEndRead::analyze(void)
 
         // they are in the same strand (used for NOT_DECIDED cases)
         if (bp->leftReverseFlag != bp->rightReverseFlag)
-            bp->rightReverseFlag = bp->leftReverseFlag;   
+            bp->rightReverseFlag = bp->leftReverseFlag;
         else
             bp->rightReverseFlag = (bp->leftReverseFlag == true) ? false : true;
 
@@ -175,15 +175,15 @@ bool PairedEndRead::isNew(TReadName &readName)
     return (this->pairInfo.find(readName) == this->pairInfo.end());
 }
 
-void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &record)
+void PairedEndRead::parseReadRecord(TReadName &readName, seqan::BamAlignmentRecord &record)
 {
     // can't specify the positions (should be filtered in record reading step)
-    if (record.rID == BamAlignmentRecord::INVALID_REFID || record.rNextId == BamAlignmentRecord::INVALID_REFID)
+    if (record.rID == seqan::BamAlignmentRecord::INVALID_REFID || record.rNextId == seqan::BamAlignmentRecord::INVALID_REFID)
         return;
 
     bool isNew = (this->pairInfo.find(readName) == this->pairInfo.end());
     BreakpointEvidence& be = this->pairInfo[readName]; // [start, end)
-    unsigned readSize = getAlignmentLengthInRef(record);
+    unsigned readSize = seqan::getAlignmentLengthInRef(record);
 
     if (isNew)
     {
@@ -194,16 +194,16 @@ void PairedEndRead::parseReadRecord(TReadName &readName, BamAlignmentRecord &rec
     if (record.tLen >= 0)
     {
         be.leftSegment.beginPos = record.beginPos;
-        be.leftSegment.endPos = record.beginPos + getAlignmentLengthInRef(record);
+        be.leftSegment.endPos = record.beginPos + seqan::getAlignmentLengthInRef(record);
         be.leftSegment.templateID = record.rID;
-        be.leftSegment.isReverse = hasFlagRC(record);
+        be.leftSegment.isReverse = seqan::hasFlagRC(record);
     }
     else
     {
         be.rightSegment.beginPos = record.beginPos;
-        be.rightSegment.endPos = record.beginPos + getAlignmentLengthInRef(record);
+        be.rightSegment.endPos = record.beginPos + seqan::getAlignmentLengthInRef(record);
         be.rightSegment.templateID = record.rID;
-        be.rightSegment.isReverse = hasFlagRC(record);
+        be.rightSegment.isReverse = seqan::hasFlagRC(record);
     }
 
     // pair-information is completed

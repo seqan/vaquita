@@ -38,16 +38,17 @@
 #include <vector>
 #include "candidate.hpp"
 
-typedef std::vector<BamAlignmentRecord> TBamRecords;
+typedef std::vector<seqan::BamAlignmentRecord> TBamRecords;
 typedef std::map<TReadName, TBamRecords> TReadAlignment;
 
 class SplitRead : public BreakpointCandidate
 {
     private:
-        TTemplateID lastChrmId = BreakpointEvidence::NOVEL_TEMPLATE;       
+        TTemplateID lastChrmId = BreakpointEvidence::NOVEL_TEMPLATE;
         TReadAlignment recordByRead;
         std::map<TReadName, bool> multChrmRead; // mapped to multiple chromosomes
-        BamFileIn* fileIn;
+        seqan::BamFileIn* fileIn;
+        bool isLongRead{false};
 
         bool updateBreakpointByIndels(std::vector<BreakpointEvidence>&);
 
@@ -57,8 +58,8 @@ class SplitRead : public BreakpointCandidate
         bool analyze(void);
         bool analyzeRead(TReadName&);
         bool analyzeCurrentChromosome();
-        void parseReadRecord(TReadName&, BamAlignmentRecord&);
-        void prepAfterHeaderParsing(BamHeader&, BamFileIn&);
-        void checkReadRecord(TReadName&, BamAlignmentRecord&);
+        void parseReadRecord(TReadName&, seqan::BamAlignmentRecord&);
+        void prepAfterHeaderParsing(seqan::BamHeader&, seqan::BamFileIn&, bool);
+        void checkReadRecord(TReadName&, seqan::BamAlignmentRecord&);
 };
 #endif // APP_SPLITREAD_H_
