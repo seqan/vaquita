@@ -120,6 +120,7 @@ class AlignmentManager
         void getSequence(seqan::CharString&, TTemplateID, TPosition, TPosition);
         void getDepth(std::vector<int32_t>&, TTemplateID, TPosition, TPosition);
 
+        bool getLongRead() { return isLongRead; }
         int32_t getSplitReadCount(void) { return splitReadCount; }
         int32_t getPairedReadCount(void) { return pairedReadCount; }
         int32_t getClippedReadCount(void) { return clippedReadCount; }

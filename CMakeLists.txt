@@ -1,5 +1,5 @@
 project (vaquita CXX)
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.4)
 
 set (SEQAN_LIBRARY_PATH seqan)
 set (CMAKE_INCLUDE_PATH

@@ -913,14 +913,14 @@ bool SVManager::orderSVByRankAgg(void)
                 mapRanks.insert(std::make_pair(vSe[rank].second, std::vector<unsigned int>()));
             mapRanks[vSe[rank].second].push_back(rank);
 
-            if (this->opManager->doPairedEndAnalysis(this->alnManager->isLongRead))
+            if (this->opManager->doPairedEndAnalysis(this->alnManager->getLongRead()))
             {
                 if(mapRanks.find(vPe[rank].second) == mapRanks.end())
                     mapRanks.insert(std::make_pair(vPe[rank].second, std::vector<unsigned int>()));
                  mapRanks[vPe[rank].second].push_back(rank);
             }
 
-            if (this->opManager->doReadDepthAnalysis(this->alnManager->isLongRead))
+            if (this->opManager->doReadDepthAnalysis(this->alnManager->getLongRead()))
             {
                 if(mapRanks.find(vRe[rank].second) == mapRanks.end())
                     mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));
