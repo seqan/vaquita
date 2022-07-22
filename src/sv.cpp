@@ -113,6 +113,8 @@ bool SVManager::loadVcf(std::string& fileName, bool useAll)
 
         if (mapInfo.find("TARGETPOS") != mapInfo.end())
             record.targetPos = std::stoul(mapInfo["TARGETPOS"]);
+        if (mapInfo.find("END") != mapInfo.end())
+            record.endPos = std::stod(mapInfo["END"]);
         if (mapInfo.find("SE") != mapInfo.end())
             record.se = std::stoul(mapInfo["SE"]);
         if (mapInfo.find("PE") != mapInfo.end())
@@ -145,7 +147,7 @@ bool SVManager::loadVcf(std::string& fileName, bool useAll)
         // filter
         if (useAll == false && record.filter != VcfRecordEnhanced::STATUS::PASS)
             continue;
-        
+
         // store it
         sv[mapInfo["SVTYPE"]].push_back(record);
     }
@@ -158,7 +160,7 @@ bool SVManager::writeVCF(void)
     // merge to a single list
     std::vector<VcfRecordEnhanced> vcfRecords;
     for (auto itSVType = this->sv.begin(); itSVType != this->sv.end(); ++itSVType)
-    {    
+    {
         std::sort(itSVType->second.begin(), itSVType->second.end(), less_than_vcf());
         int32_t nID = 1;
         for (auto itSV = itSVType->second.begin(); itSV != itSVType->second.end(); ++itSV)
@@ -168,6 +170,7 @@ bool SVManager::writeVCF(void)
                 continue;
 
             // addtional informations
+            itSV->info += "END=" + std::to_string(itSV->endPos) + ";";
             itSV->info  = "SC=" + std::to_string(itSV->sc) + ";";
             itSV->info += "VT=" + std::to_string(itSV->vt) + ";";
             itSV->info += "SE=" + std::to_string(itSV->se) + ";";
@@ -223,6 +226,7 @@ bool SVManager::writeVCF(void)
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variation (SV)\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SVLEN,Number=1,Type=Integer,Description=\"Size of structural variation compared to reference\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=TARGETPOS,Number=1,Type=Integer,Description=\"Position of the newly inserted sequence in duplication or translocations\">"));
+    appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=END,Number=1,Type=Integer,Description=\"End position of the structural variant\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SC,Number=1,Type=Float,Description=\"Overall score\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=VT,Number=1,Type=Float,Description=\"Number of evidences types supporting the SV\">"));
     appendValue(vcfHeader, seqan::VcfHeaderRecord("INFO", "<ID=SE,Number=1,Type=Integer,Description=\"Number of split-reads supporting the SV\">"));
@@ -268,7 +272,7 @@ bool SVManager::addTranslocation(VcfRecordEnhanced& orgRecord)
 bool SVManager::findTranslocation(void)
 {
     int32_t nID = 1;
-    int32_t adjTol = this->opManager->getAdjTol();  
+    int32_t adjTol = this->opManager->getAdjTol();
 
     // true : remove it from the duplication list
     std::vector<bool> dupRemoveList;
@@ -300,7 +304,7 @@ bool SVManager::findTranslocation(void)
                     record.ce = itDup->ce + itDupComp->ce;
                     record.re = std::max(itDup->re, itDupComp->re);
                     record.vt = std::max(itDup->vt, itDupComp->vt);
-                    if (itDup->status == VcfRecordEnhanced::STATUS::PASS || itDupComp->status == VcfRecordEnhanced::STATUS::PASS)                    
+                    if (itDup->status == VcfRecordEnhanced::STATUS::PASS || itDupComp->status == VcfRecordEnhanced::STATUS::PASS)
                         record.status = VcfRecordEnhanced::STATUS::PASS;
 
                     // marking to remove
@@ -341,7 +345,7 @@ bool SVManager::findTranslocation(void)
     std::vector<VcfRecordEnhanced> dupAfter;
     for (auto i = 0; i < this->sv[SVTYPE_DUPLICATION()].size(); ++i)
         if (dupRemoveList[i] == false)
-            dupAfter.push_back(this->sv[SVTYPE_DUPLICATION()][i]); 
+            dupAfter.push_back(this->sv[SVTYPE_DUPLICATION()][i]);
     this->sv[SVTYPE_DUPLICATION()].swap(dupAfter);
 
     return true;
@@ -374,7 +378,7 @@ bool SVManager::findDuplication(void)
         // skip this
         if (finalBreakpoint->filtered == true)
             found = false;
-     
+
         if (found == true)
         {
             std::vector<TPosition> leftExactPositions, centerExactPositions, rightExactPositions;
@@ -399,7 +403,7 @@ bool SVManager::findDuplication(void)
             auto itDel = this->sv[SVTYPE_DELETION()].begin();
             while( itDel != this->sv[SVTYPE_DELETION()].end() )
             {
-                bool matchFound = false;              
+                bool matchFound = false;
                 uint svLen = 0;
 
                 if (itDel->rID == finalBreakpoint->leftTemplateID)
@@ -481,7 +485,7 @@ bool SVManager::findDuplication(void)
                 // merged to this duplication
                 for (auto it=vDel.begin(); it != vDel.end(); ++it)
                     (*it)->status = VcfRecordEnhanced::STATUS::MERGED;
-            
+
                 // sorting
                 std::sort(leftExactPositions.begin(), leftExactPositions.end());
                 std::sort(leftImprecisePositions.begin(), leftImprecisePositions.end());
@@ -493,7 +497,7 @@ bool SVManager::findDuplication(void)
                 // fill records
                 record.id = SVTYPE_DUPLICATION() + "_" + std::to_string(nID++);
                 record.rID = finalBreakpoint->leftTemplateID;
-                record.breakpoint = bp;               
+                record.breakpoint = bp;
 
                 // get positions
                 TPosition leftPos, rightPos;
@@ -553,7 +557,7 @@ bool SVManager::findDuplication(void)
                         addTranslocation(record);
 
                         record.status = VcfRecordEnhanced::STATUS::MERGED;
-                        sv[SVTYPE_DUPLICATION()].push_back(record);                        
+                        sv[SVTYPE_DUPLICATION()].push_back(record);
                     }
                     else if (leftMatchFound)
                     {
@@ -608,7 +612,7 @@ bool SVManager::findInversion(void)
         // not an inversion
         if (bp->orientation != BreakpointEvidence::ORIENTATION::INVERTED)
             found = false;
-        
+
         // not an inversion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
@@ -642,7 +646,7 @@ bool SVManager::findInversion(void)
             record.vt = finalBreakpoint->vote;
             record.gc = finalBreakpoint->gcContent;
             record.cp = finalBreakpoint->sequenceComplexity;
-      
+
             record.breakpoint = bp;
             record.status = (finalBreakpoint->filtered) ? VcfRecordEnhanced::STATUS::FILTERED : VcfRecordEnhanced::STATUS::PASS;
             record.imprecise = finalBreakpoint->imprecise;
@@ -680,7 +684,7 @@ bool SVManager::findDeletion(void)
         // not a deletion
         if (bp->orientation != BreakpointEvidence::ORIENTATION::PROPERLY_ORIENTED_LARGE)
             found = false;
-        
+
         // not a deletion
         if (finalBreakpoint->leftPosition >= finalBreakpoint->rightPosition)
             found = false;
@@ -706,7 +710,7 @@ bool SVManager::findDeletion(void)
             record.pe = info->pairedEndSupport;
             record.ce = info->clippedReadSupport;
             record.re = std::max(info->leftReadDepthDiffScore, info->rightReadDepthDiffScore);
-            record.rd = info->avgReadDepth; 
+            record.rd = info->avgReadDepth;
             record.vt = finalBreakpoint->vote;
             record.gc = finalBreakpoint->gcContent;
             record.cp = finalBreakpoint->sequenceComplexity;
@@ -748,7 +752,7 @@ bool SVManager::findBreakend(void)
         if (finalBreakpoint->filtered == true)
         {
             ++itBreakpoint;
-            continue;         
+            continue;
         }
 
         VcfRecordEnhanced record;
@@ -858,7 +862,7 @@ bool SVManager::orderSVByRankAgg(void)
                 vSe.push_back(std::make_pair(std::make_pair(itSV->se + itSV->ce, itSV->rd), &(*itSV)));
                 vPe.push_back(std::make_pair(std::make_pair(itSV->pe, itSV->rd), &(*itSV)));
                 vRe.push_back(std::make_pair(std::make_pair(itSV->re, itSV->rd), &(*itSV)));
-                
+
                 /*
                 double se = (double) (itSV->se + itSV->ce + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
                 double pe = (double) (itSV->pe + BreakpointCandidate::PREVENT_DIV_BY_ZERO()) / itSV->rd;
@@ -877,7 +881,7 @@ bool SVManager::orderSVByRankAgg(void)
 
     {
         // get individual rank.
-        auto sorter = [](TOrderingInfo l, TOrderingInfo r)->bool{ 
+        auto sorter = [](TOrderingInfo l, TOrderingInfo r)->bool{
         if (l.first.first != r.first.first)
             return l.first.first > r.first.first;
         else
@@ -905,7 +909,7 @@ bool SVManager::orderSVByRankAgg(void)
             if (this->opManager->doReadDepthAnalysis())
             {
                 if(mapRanks.find(vRe[rank].second) == mapRanks.end())
-                    mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));        
+                    mapRanks.insert(std::make_pair(vRe[rank].second, std::vector<unsigned int>()));
                 mapRanks[vRe[rank].second].push_back(rank);
             }
         }
@@ -935,15 +939,15 @@ bool SVManager::orderSVByRankAgg(void)
                 prevOriginalRank = aggRank[i].first;
                 tieCount = 0;
             }
-            aggRank[i].second->sc = (1.0 - ( (double)correctedRank  /  (double) (aggRank.size() - 1))) * 100;            
+            aggRank[i].second->sc = (1.0 - ( (double)correctedRank  /  (double) (aggRank.size() - 1))) * 100;
         }
     }
 
     return true;
 }
 
-uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = false) 
-{ 
+uint32_t SVManager::getSVCount(std::string svType, bool countFilteredResult = false)
+{
     int nCnt = 0;
     for (auto itSV = sv[svType].begin(); itSV != sv[svType].end(); ++itSV)
     {
